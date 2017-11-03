@@ -39,7 +39,7 @@ func TestAll(t *testing.T) {
 	// We use a global channel so that the function below does not
 	// recieve any arguments, so we can test that parseFirstFunc works
 	// regardless of arguments on the stack.
-	_allDone := make(chan struct{})
+	_allDone = make(chan struct{})
 	defer close(_allDone)
 
 	for i := 0; i < 5; i++ {

@@ -127,7 +127,7 @@ func parseFirstFunc(line string) string {
 	if idx := strings.LastIndex(line, "("); idx > 0 {
 		return line[:idx]
 	}
-	return line
+	panic(fmt.Sprintf("function calls missing parents: %q", line))
 }
 
 // parseGoStackHeader parses a stack header that looks like:
@@ -137,12 +137,12 @@ func parseGoStackHeader(line string) (goroutineID int, state string) {
 	line = strings.TrimSuffix(line, ":\n")
 	parts := strings.SplitN(line, " ", 3)
 	if len(parts) != 3 {
-		panic(fmt.Sprintf("unexpected stack header format: %v", line))
+		panic(fmt.Sprintf("unexpected stack header format: %q", line))
 	}
 
 	id, err := strconv.Atoi(parts[1])
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse goroutine ID: %v", parts[1]))
+		panic(fmt.Sprintf("failed to parse goroutine ID: %v in line %q", parts[1], line))
 	}
 
 	state = strings.TrimSuffix(strings.TrimPrefix(parts[2], "["), "]")
