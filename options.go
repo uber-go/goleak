@@ -57,6 +57,12 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+func maxSleep(d time.Duration) Option {
+	return optionFunc(func(opts *opts) {
+		opts.maxSleep = d
+	})
+}
+
 func addFilter(f func(stack.Stack) bool) Option {
 	return optionFunc(func(opts *opts) {
 		opts.filters = append(opts.filters, f)
