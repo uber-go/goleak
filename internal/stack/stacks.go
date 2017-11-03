@@ -55,6 +55,11 @@ func (s Stack) Full() string {
 	return s.fullStack.String()
 }
 
+// FirstFunction returns the name of the first function on the stack.
+func (s Stack) FirstFunction() string {
+	return s.firstFunction
+}
+
 func (s Stack) String() string {
 	return fmt.Sprintf(
 		"Goroutine %v in state %v, with %v on top of the stack:\n%s",
