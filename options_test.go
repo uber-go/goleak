@@ -43,8 +43,7 @@ func TestOptionsFilters(t *testing.T) {
 		}
 	}
 
-	bg := startBlockedG()
-	defer bg.unblock()
+	defer startBlockedG().unblock()
 
 	// Now the filters should find something that doesn't match a filter.
 	countUnfiltered := func() int {

@@ -80,5 +80,5 @@ func TestVerifyNoLeaks(t *testing.T) {
 	bg := startBlockedG()
 	VerifyNoLeaks(ft, testOptions())
 	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNoLeaks on leaked goroutine")
-	defer bg.unblock()
+	bg.unblock()
 }
