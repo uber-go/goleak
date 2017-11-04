@@ -29,11 +29,6 @@ import (
 	"go.uber.org/gleek/internal/stack"
 )
 
-func blockTill(started chan struct{}, done chan struct{}) {
-	close(started)
-	<-done
-}
-
 func TestOptionsFilters(t *testing.T) {
 	opts := buildOpts()
 	cur := stack.Current()
@@ -48,13 +43,7 @@ func TestOptionsFilters(t *testing.T) {
 		}
 	}
 
-	var (
-		started = make(chan struct{})
-		done    = make(chan struct{})
-	)
-	defer close(done)
-	go blockTill(started, done)
-	<-started
+	defer startBlockedG().unblock()
 
 	// Now the filters should find something that doesn't match a filter.
 	countUnfiltered := func() int {
@@ -69,11 +58,11 @@ func TestOptionsFilters(t *testing.T) {
 		}
 		return unmatched
 	}
-	require.Equal(t, 1, countUnfiltered(), "Expected blockTill goroutine to not match any filter")
+	require.Equal(t, 1, countUnfiltered(), "Expected blockedG goroutine to not match any filter")
 
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
-	opts = buildOpts(IgnoreTopFunction("go.uber.org/gleek.blockTill"))
-	require.Zero(t, countUnfiltered(), "blockTill should be filtered out")
+	opts = buildOpts(IgnoreTopFunction("go.uber.org/gleek.(*blockedG).run"))
+	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
 }
 
 func TestOptionsRetry(t *testing.T) {
