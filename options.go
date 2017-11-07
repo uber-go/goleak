@@ -74,7 +74,11 @@ func buildOpts(options ...Option) *opts {
 		maxRetries: _defaultRetries,
 		maxSleep:   100 * time.Millisecond,
 	}
-	opts.filters = append(opts.filters, isTestStack, isSyscallStack)
+	opts.filters = append(opts.filters,
+		isTestStack,
+		isSyscallStack,
+		isStdLibStack,
+	)
 	for _, option := range options {
 		option.apply(opts)
 	}
@@ -123,4 +127,15 @@ func isSyscallStack(s stack.Stack) bool {
 	// Typically runs in the background when code uses CGo:
 	// https://github.com/golang/go/issues/16714
 	return s.FirstFunction() == "runtime.goexit" && strings.HasPrefix(s.State(), "syscall")
+}
+
+func isStdLibStack(s stack.Stack) bool {
+	// Importing os/signal starts a background goroutine.
+	// The name of the function at the top has changed between versions.
+	if f := s.FirstFunction(); f == "os/signal.signal_recv" || f == "os/signal.loop" {
+		return true
+	}
+
+	// Using signal.Notify will start a runtime goroutine.
+	return strings.Contains(s.Full(), "runtime.ensureSigM")
 }
