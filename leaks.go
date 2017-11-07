@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package gleek
+package goleak
 
 import (
 	"fmt"
 
-	"go.uber.org/gleek/internal/stack"
+	"go.uber.org/goleak/internal/stack"
 )
 
 // TestingT is the minimal subset of testing.TB that we use.

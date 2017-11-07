@@ -18,13 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package gleek
+package goleak
 
 import (
 	"strings"
 	"time"
 
-	"go.uber.org/gleek/internal/stack"
+	"go.uber.org/goleak/internal/stack"
 )
 
 // Option lets users specify custom verifications.
@@ -50,7 +50,7 @@ func (f optionFunc) apply(opts *opts) { f(opts) }
 
 // IgnoreTopFunction ignores any goroutines where the specified function
 // is at the top of the stack. The function name should be fully qualified,
-// e.g., go.uber.org/gleek.IgnoreTopFunction
+// e.g., go.uber.org/goleak.IgnoreTopFunction
 func IgnoreTopFunction(f string) Option {
 	return addFilter(func(s stack.Stack) bool {
 		return s.FirstFunction() == f
