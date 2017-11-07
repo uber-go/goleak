@@ -39,7 +39,7 @@ func TestNoLeaks(t *testing.T) {
 	signal.Notify(c, os.Interrupt)
 	require.NoError(t, gleek.FindLeaks(), "Found leaks caused by signal.Notify")
 
-	// Rester all registered signals.
+	// Restore all registered signals.
 	signal.Reset(os.Interrupt)
 	require.NoError(t, gleek.FindLeaks(), "Found leaks caused after signal.Reset")
 }
