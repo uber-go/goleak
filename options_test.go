@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package gleek
+package goleak
 
 import (
 	"testing"
@@ -26,7 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/gleek/internal/stack"
+	"go.uber.org/goleak/internal/stack"
 )
 
 func TestOptionsFilters(t *testing.T) {
@@ -61,7 +61,7 @@ func TestOptionsFilters(t *testing.T) {
 	require.Equal(t, 1, countUnfiltered(), "Expected blockedG goroutine to not match any filter")
 
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
-	opts = buildOpts(IgnoreTopFunction("go.uber.org/gleek.(*blockedG).run"))
+	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).run"))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
 }
 
