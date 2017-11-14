@@ -44,7 +44,7 @@ func VerifyTestMain(m TestingM, options ...Option) {
 
 	if exitCode == 0 {
 		if err := FindLeaks(options...); err != nil {
-			fmt.Fprintf(_osStderr, "goleak: Errors on successful test run:%v\n", err)
+			fmt.Fprintf(_osStderr, "goleak: Errors on successful test run: %v\n", err)
 			exitCode = 1
 		}
 	}
