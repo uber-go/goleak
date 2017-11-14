@@ -60,7 +60,6 @@ func osStubs() (chan int, chan string) {
 
 func TestVerifyTestMain(t *testing.T) {
 	defer clearOSStubs()
-
 	exitCode, stderr := osStubs()
 
 	blocked := startBlockedG()
