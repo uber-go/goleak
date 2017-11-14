@@ -29,7 +29,7 @@ at the end of every test package by creating a `TestMain` function in your packa
 
 ```go
 func TestMain(m *testing.M) {
-	goleak.VerifyPackage(m)
+	goleak.VerifyTestMain(m)
 }
 ```
 
