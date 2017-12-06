@@ -39,6 +39,14 @@ type TestingM interface {
 
 // VerifyTestMain can be used in a TestMain function for package tests to
 // verify that there were no goroutine leaks.
+// To use it, your TestMain function should look like:
+//
+// func TestMain(m *testing.M) {
+//   goleak.VerifyTestMain(m)
+// }
+//
+// This will run all tests as per normal, and if they were successful, look
+// for any goroutine leaks and fail the tests if any leaks were found.
 func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 

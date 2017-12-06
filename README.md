@@ -2,6 +2,10 @@
 
 Goroutine leak detector to help avoid Goroutine leaks.
 
+## Development Status: Alpha
+
+goleak is still in development, and APIs are still in flux.
+
 ## Installation
 
 You can use `go get` to get the latest version:
@@ -12,7 +16,7 @@ You can use `go get` to get the latest version:
 
 ## Quick Start
 
-Verify that there are no unexpected goroutines running at the end of every test:
+To verify that there are no unexpected goroutines running at the end of a test:
 
 ```go
 func TestA(t *testing.T) {
@@ -23,19 +27,14 @@ func TestA(t *testing.T) {
 ```
 
 Instead of checking for leaks at the end of every test, `goleak` can also be run
-at the end of every test package by creating a `TestMain` function in your package:
-
-**TODO** This is not yet supported:
+at the end of every test package by creating a `TestMain` function for your 
+package:
 
 ```go
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 ```
-
-## Development Status: Alpha
-
-goleak is still in development, and APIs are still in flux.
 
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
