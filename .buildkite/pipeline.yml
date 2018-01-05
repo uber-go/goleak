@@ -1,0 +1,5 @@
+steps:
+  - name: ":go: 1.8 test"
+    command: "make test"
+  - name: ":go: 1.9 test"
+    command: "make test"
