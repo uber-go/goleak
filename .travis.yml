@@ -1,0 +1,32 @@
+sudo: false
+language: go
+go_import_path: go.uber.org/goleak
+
+go:
+  # TODO(prashant): Enable once we have fixed Linux issues with old versions.
+  #- 1.6
+  #- 1.7
+  #- 1.8
+  - 1.9.2
+env:
+- TEST=yes
+
+matrix:
+  include:
+  - go: 1.9.2
+    env: COVERAGE=yes LINT=yes
+
+cache:
+  directories:
+    - vendor
+
+install:
+  - make install_deps
+
+script:
+  - test -z "$TEST" || make test
+  - test -z "$COVERAGE" || scripts/coverage.sh
+  - test -z "$LINT" || make install_lint lint
+
+after_success:
+  - test -z "$COVERAGE" || bash <(curl -s https://codecov.io/bash)
