@@ -31,6 +31,6 @@ lint:
 	@echo "Checking lint..."
 	@$(foreach dir,$(PACKAGES),golint $(dir) 2>&1 | tee -a lint.log;)
 	@echo "Checking for unresolved FIXMEs..."
-	@git grep -i fixme | grep -v -e vendor -e Makefile | tee -a lint.log
+	@git grep -i fixme | grep -v -e '^vendor/' -e '^Makefile' | tee -a lint.log
 	@[ ! -s lint.log ]
 
