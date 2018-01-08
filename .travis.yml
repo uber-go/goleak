@@ -8,11 +8,13 @@ go:
   #- 1.7
   #- 1.8
   - 1.9
+env:
+- TEST=yes
 
 matrix:
   include:
   - go: 1.9
-    env: NO_TEST=yes COVERAGE=yes LINT=yes
+    env: COVERAGE=yes LINT=yes
 
 cache:
   directories:
@@ -22,9 +24,9 @@ install:
   - make install
 
 script:
-  - test -n "$NO_TEST" || make test
+  - test -z "$TEST" || make test
   - test -z "$COVERAGE" || scripts/coverage.sh
-  - test -n "$LINT" || make install_lint lint
+  - test -z "$LINT" || make install_lint lint
 
 after_success:
   - test -z "$COVERAGE" || bash <(curl -s https://codecov.io/bash)
