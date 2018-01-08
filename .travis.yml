@@ -7,13 +7,13 @@ go:
   #- 1.6
   #- 1.7
   #- 1.8
-  - 1.9
+  - 1.9.2
 env:
 - TEST=yes
 
 matrix:
   include:
-  - go: 1.9
+  - go: 1.9.2
     env: COVERAGE=yes LINT=yes
 
 cache:
