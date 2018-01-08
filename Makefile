@@ -7,8 +7,8 @@ build:
 	go build -i $(PACKAGES)
 
 
-.PHONY: install
-install:
+.PHONY: install_deps
+install_deps:
 	glide --version || go get github.com/Masterminds/glide
 	glide install
 

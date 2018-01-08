@@ -21,7 +21,7 @@ cache:
     - vendor
 
 install:
-  - make install
+  - make install_deps
 
 script:
   - test -z "$TEST" || make test
