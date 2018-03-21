@@ -20,14 +20,14 @@ To verify that there are no unexpected goroutines running at the end of a test:
 
 ```go
 func TestA(t *testing.T) {
-	defer goleak.Verify(t)
+	defer goleak.VerifyNoLeaks(t)
 
 	// test logic here.
 }
 ```
 
 Instead of checking for leaks at the end of every test, `goleak` can also be run
-at the end of every test package by creating a `TestMain` function for your 
+at the end of every test package by creating a `TestMain` function for your
 package:
 
 ```go
