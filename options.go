@@ -53,7 +53,7 @@ func (f optionFunc) apply(opts *opts) { f(opts) }
 // e.g., go.uber.org/goleak.IgnoreTopFunction
 func IgnoreTopFunction(f string) Option {
 	return addFilter(func(s stack.Stack) bool {
-		return s.FirstFunction() == f
+		return strings.HasSuffix(s.FirstFunction(), f)
 	})
 }
 
