@@ -20,9 +20,12 @@
 
 package goleak
 
+import "sync"
+
 type blockedG struct {
 	started chan struct{}
 	wait    chan struct{}
+	running sync.WaitGroup
 }
 
 func startBlockedG() *blockedG {
@@ -30,6 +33,7 @@ func startBlockedG() *blockedG {
 		started: make(chan struct{}),
 		wait:    make(chan struct{}),
 	}
+	bg.running.Add(1)
 	go bg.run()
 	<-bg.started
 	return bg
@@ -38,8 +42,10 @@ func startBlockedG() *blockedG {
 func (bg *blockedG) run() {
 	close(bg.started)
 	<-bg.wait
+	bg.running.Done()
 }
 
 func (bg *blockedG) unblock() {
 	close(bg.wait)
+	bg.running.Wait()
 }
