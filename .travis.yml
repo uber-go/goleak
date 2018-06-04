@@ -3,11 +3,10 @@ language: go
 go_import_path: go.uber.org/goleak
 
 go:
-  # TODO(prashant): Enable once we have fixed Linux issues with old versions.
-  #- 1.6
-  #- 1.7
-  #- 1.8
-  - 1.9.2
+  - 1.6.x
+  - 1.7.x
+  - 1.8.x
+  - 1.9.x
 env:
 - TEST=yes
 
