@@ -115,7 +115,7 @@ func isTestStack(s stack.Stack) bool {
 	// to end by waiting on a channel.
 	// Since go1.7, a separate goroutine is started to wait for signals.
 	switch s.FirstFunction() {
-	case "testing.RunTests", "testing.(*T).Run":
+	case "testing.RunTests", "testing.(*T).Run", "testing.(*T).Parallel":
 		// In pre1.7 and post-1.7, background goroutines started by the testing
 		// package are blocked waiting on a channel.
 		return strings.HasPrefix(s.State(), "chan receive")
