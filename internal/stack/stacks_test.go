@@ -21,7 +21,7 @@
 package stack
 
 import (
-	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -48,18 +48,17 @@ func TestAll(t *testing.T) {
 
 	got := All()
 
-	// We have exactly 7 gorotuines:
-	// "main" goroutine
-	// test goroutine
-	// 5 goroutines started above.
-	require.Len(t, got, 7)
-	sort.Sort(byGoroutineID(got))
-
-	assert.Contains(t, got[0].Full(), "testing.(*T).Run")
-	assert.Contains(t, got[1].Full(), "TestAll")
-	for i := 0; i < 5; i++ {
-		assert.Contains(t, got[2+i].Full(), "stack.waitForDone")
+	// There are some test goroutines running, but when we sort by goroutine ID,
+	// we expect the last 5 goroutines to be waitForDone, and the rest to be
+	// testing functions.
+	waitGoroutines := make(map[int]int)
+	for _, g := range got {
+		if strings.Contains(g.FirstFunction(), "stack.waitForDone") {
+			require.NotContains(t, waitGoroutines, g.ID(), "duplicate goroutine ID")
+			waitGoroutines[g.ID()]++
+		}
 	}
+	require.Len(t, waitGoroutines, 5, "Unexpected number of waitForDone goroutines")
 }
 
 func TestCurrent(t *testing.T) {
