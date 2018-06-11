@@ -114,6 +114,8 @@ func isTestStack(s stack.Stack) bool {
 	// the test in a separate goroutine and waited for that test goroutine
 	// to end by waiting on a channel.
 	// Since go1.7, a separate goroutine is started to wait for signals.
+	// T.Parallel is for parallel tests, which are blocked until all serial
+	// tests have run with T.Parallel at the top of the stack.
 	switch s.FirstFunction() {
 	case "testing.RunTests", "testing.(*T).Run", "testing.(*T).Parallel":
 		// In pre1.7 and post-1.7, background goroutines started by the testing
