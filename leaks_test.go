@@ -82,3 +82,13 @@ func TestVerifyNoLeaks(t *testing.T) {
 	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNoLeaks on leaked goroutine")
 	bg.unblock()
 }
+
+func TestVerifyParallel(t *testing.T) {
+	t.Run("parallel", func(t *testing.T) {
+		t.Parallel()
+	})
+
+	t.Run("serial", func(t *testing.T) {
+		VerifyNoLeaks(t)
+	})
+}
