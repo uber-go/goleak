@@ -50,7 +50,7 @@ $ go test -c -o tests
 
 # Run each test individually, printing "." for successful tests, or the test name
 # for failing tests.
-$ for test in $(go test -list Test | head -n -1); do ./tests -test.run $test 2>/dev/null >/dev/null && echo -n "." || echo "\n$test failed"; done
+$ for test in $(go test -list . | grep "^Test"); do ./tests -test.run "^$test\$" &>/dev/null && echo -n "." || echo "\n$test failed"; done
 ```
 
 This will only print names of failing tests which can be investigated individually.
