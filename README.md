@@ -53,7 +53,13 @@ $ go test -c -o tests
 $ for test in $(go test -list . | grep "^Test"); do ./tests -test.run "^$test\$" &>/dev/null && echo -n "." || echo "\n$test failed"; done
 ```
 
-This will only print names of failing tests which can be investigated individually.
+This will only print names of failing tests which can be investigated individually. E.g.,
+
+```
+.....
+TestLeakyTest failed
+.......
+```
 
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
