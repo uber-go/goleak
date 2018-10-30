@@ -36,6 +36,25 @@ func TestMain(m *testing.M) {
 }
 ```
 
+## Determine Source of Package Leaks
+
+When verifying leaks using `TestMain`, the leak test is only run once after all tests
+have been run. This is typically enough to ensure there's no goroutines leaked from
+tests, but when there are leaks, it's hard to determine which test is causing them.
+
+You can use the following bash script to determine the source of the failing test:
+
+```sh
+# Create a test binary which will be used to run each test individually
+$ go test -c -o tests
+
+# Run each test individually, printing "." for successful tests, or the test name
+# for failing tests.
+$ for test in $(go test -list Test | head -n -1); do ./tests -test.run $test 2>/dev/null >/dev/null && echo -n "." || echo "\n$test failed"; done
+```
+
+This will only print names of failing tests which can be investigated individually.
+
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
 [doc]: https://godoc.org/go.uber.org/goleak
