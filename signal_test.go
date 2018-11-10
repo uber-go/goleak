@@ -32,14 +32,14 @@ import (
 
 func TestNoLeaks(t *testing.T) {
 	// Just importing the package can cause leaks.
-	require.NoError(t, goleak.FindLeaks(), "Found leaks caused by signal import")
+	require.NoError(t, goleak.Find(), "Found leaks caused by signal import")
 
 	// Register some signal handlers and ensure there's no leaks.
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt)
-	require.NoError(t, goleak.FindLeaks(), "Found leaks caused by signal.Notify")
+	require.NoError(t, goleak.Find(), "Found leaks caused by signal.Notify")
 
 	// Restore all registered signals.
 	signal.Reset(os.Interrupt)
-	require.NoError(t, goleak.FindLeaks(), "Found leaks caused after signal.Reset")
+	require.NoError(t, goleak.Find(), "Found leaks caused after signal.Reset")
 }
