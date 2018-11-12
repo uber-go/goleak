@@ -33,35 +33,35 @@ import (
 var _ = TestingT(testing.TB(nil))
 
 // testOptions passes a shorter max sleep time, used so tests don't wait
-// ~1 second in cases where we expect FindLeaks to error out.
+// ~1 second in cases where we expect Find to error out.
 func testOptions() Option {
 	return maxSleep(time.Millisecond)
 }
 
-func TestFindLeaks(t *testing.T) {
-	require.NoError(t, FindLeaks(), "Should find no leaks by default")
+func TestFind(t *testing.T) {
+	require.NoError(t, Find(), "Should find no leaks by default")
 
 	bg := startBlockedG()
-	err := FindLeaks(testOptions())
+	err := Find(testOptions())
 	require.Error(t, err, "Should find leaks with leaked goroutine")
 	assert.Contains(t, err.Error(), "blockedG")
 	assert.Contains(t, err.Error(), "created by go.uber.org/goleak.startBlockedG")
 
 	// Once we unblock the goroutine, we shouldn't have leaks.
 	bg.unblock()
-	require.NoError(t, FindLeaks(), "Should find no leaks by default")
+	require.NoError(t, Find(), "Should find no leaks by default")
 }
 
-func TestFindLeaksRetry(t *testing.T) {
+func TestFindRetry(t *testing.T) {
 	// for i := 0; i < 10; i++ {
 	bg := startBlockedG()
-	require.Error(t, FindLeaks(testOptions()), "Should find leaks with leaked goroutine")
+	require.Error(t, Find(testOptions()), "Should find leaks with leaked goroutine")
 
 	go func() {
 		time.Sleep(time.Millisecond)
 		bg.unblock()
 	}()
-	require.NoError(t, FindLeaks(), "FindLeaks should retry while background goroutine ends")
+	require.NoError(t, Find(), "Find should retry while background goroutine ends")
 }
 
 type fakeT struct {
@@ -72,14 +72,14 @@ func (ft *fakeT) Error(args ...interface{}) {
 	ft.errors = append(ft.errors, fmt.Sprint(args))
 }
 
-func TestVerifyNoLeaks(t *testing.T) {
+func TestVerifyNone(t *testing.T) {
 	ft := &fakeT{}
-	VerifyNoLeaks(ft)
-	require.Empty(t, ft.errors, "Expect no errors from VerifyNoLeaks")
+	VerifyNone(ft)
+	require.Empty(t, ft.errors, "Expect no errors from VerifyNone")
 
 	bg := startBlockedG()
-	VerifyNoLeaks(ft, testOptions())
-	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNoLeaks on leaked goroutine")
+	VerifyNone(ft, testOptions())
+	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine")
 	bg.unblock()
 }
 
@@ -89,6 +89,6 @@ func TestVerifyParallel(t *testing.T) {
 	})
 
 	t.Run("serial", func(t *testing.T) {
-		VerifyNoLeaks(t)
+		VerifyNone(t)
 	})
 }
