@@ -69,10 +69,10 @@ func Find(options ...Option) error {
 	return fmt.Errorf("found unexpected goroutines:\n%s", stacks)
 }
 
-// VerifyNone calls Find and calls Error on the passed in TestingT if
-// any leaks are found. This is a helper method to make it easier to integrate
-// in tests by doing:
-// defer VerifyNone(t)
+// VerifyNone marks the given TestingT as failed if any extra goroutines are
+// found by Find. This is a helper method to make it easier to integrate in
+// tests by doing:
+// 	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
 	if err := Find(options...); err != nil {
 		t.Error(err)
