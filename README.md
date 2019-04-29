@@ -64,8 +64,8 @@ TestLeakyTest failed
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
 [doc]: https://godoc.org/go.uber.org/goleak
-[ci-img]: https://travis-ci.org/uber-go/goleak.svg?branch=master
-[ci]: https://travis-ci.org/uber-go/goleak
+[ci-img]: https://travis-ci.com/uber-go/goleak.svg?branch=master
+[ci]: https://travis-ci.com/uber-go/goleak
 [cov-img]: https://codecov.io/gh/uber-go/goleak/branch/master/graph/badge.svg
 [cov]: https://codecov.io/gh/uber-go/goleak
 [benchmarking suite]: https://github.com/uber-go/goleak/tree/master/benchmarks
