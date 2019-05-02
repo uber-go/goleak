@@ -63,7 +63,7 @@ func TestOptionsFilters(t *testing.T) {
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
 	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).run"))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
-	
+
 	// We should be able to add a match filter as well as a top-function one
 	opts = buildOpts(IgnoreMatch("go.uber.org/goleak.(*blockedG).run("))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
