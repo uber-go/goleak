@@ -57,6 +57,14 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+// IgnoreMatch ignores any goroutines where the specified match substring
+// is present in the stack grace.
+func IgnoreMatch(m string) Option {
+	return addFilter(func(s stack.Stack) bool {
+		return strings.Contains(s.Full(), m)
+	})
+}
+
 func maxSleep(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxSleep = d
