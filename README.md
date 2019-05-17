@@ -20,7 +20,7 @@ To verify that there are no unexpected goroutines running at the end of a test:
 
 ```go
 func TestA(t *testing.T) {
-	defer goleak.VerifyNoLeaks(t)
+	defer goleak.VerifyNone(t)
 
 	// test logic here.
 }
