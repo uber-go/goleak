@@ -4,16 +4,15 @@ go_import_path: go.uber.org/goleak
 
 go:
   # TODO(prashant): Enable once we have fixed Linux issues with old versions.
-  #- 1.6
-  #- 1.7
-  #- 1.8
-  - 1.9.2
+  - 1.10.x
+  - 1.11.x
+  - 1.12.x
 env:
 - TEST=yes
 
 matrix:
   include:
-  - go: 1.9.2
+  - go: 1.12.x
     env: COVERAGE=yes LINT=yes
 
 cache:
