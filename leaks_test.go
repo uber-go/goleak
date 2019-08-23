@@ -69,7 +69,7 @@ type fakeT struct {
 }
 
 func (ft *fakeT) Error(args ...interface{}) {
-	ft.errors = append(ft.errors, fmt.Sprint(args))
+	ft.errors = append(ft.errors, fmt.Sprint(args...))
 }
 
 func TestVerifyNone(t *testing.T) {

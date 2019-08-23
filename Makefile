@@ -19,7 +19,7 @@ test:
 
 .PHONY: install_lint
 install_lint:
-	go get github.com/golang/lint/golint
+	go get golang.org/x/lint/golint
 
 .PHONY: lint
 lint:
@@ -27,7 +27,7 @@ lint:
 	@echo "Checking formatting..."
 	@gofmt -d -s $(PACKAGE_FILES) 2>&1 | tee lint.log
 	@echo "Checking vet..."
-	@$(foreach dir,$(PACKAGE_FILES),go tool vet $(dir) 2>&1 | tee -a lint.log;)
+	@go vet $(PACKAGES) 2>&1 | tee -a lint.log
 	@echo "Checking lint..."
 	@$(foreach dir,$(PACKAGES),golint $(dir) 2>&1 | tee -a lint.log;)
 	@echo "Checking for unresolved FIXMEs..."
