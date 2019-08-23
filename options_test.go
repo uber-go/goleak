@@ -32,7 +32,7 @@ import (
 func TestOptionsFilters(t *testing.T) {
 	opts := buildOpts()
 	cur := stack.Current()
-	all := stack.All()
+	all := getStableAll(t, cur)
 
 	// At least one of these should be the same as current, the others should be filtered out.
 	for _, s := range all {
