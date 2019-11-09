@@ -1,36 +1,40 @@
-PACKAGES := $(shell glide nv)
-# Many Go tools take file globs or directories as arguments instead of packages.
-PACKAGE_FILES ?= *.go $(shell find internal -type f -iname '*.go')
+export GOBIN ?= $(shell pwd)/bin
+
+GOLINT = $(GOBIN)/golint
+
+GO_FILES := $(shell \
+	find . '(' -path '*/.*' -o -path './vendor' ')' -prune \
+	-o -name '*.go' -print | cut -b3-)
 
 .PHONY: build
 build:
-	go build -i $(PACKAGES)
+	go build ./...
 
-
-.PHONY: install_deps
-install_deps:
-	glide --version || go get github.com/Masterminds/glide
-	glide install
-
+.PHONY: install
+install:
+	go mod download
 
 .PHONY: test
 test:
-	go test -v -race $(PACKAGES)
+	go test -v -race ./...
 
-.PHONY: install_lint
-install_lint:
-	go get golang.org/x/lint/golint
+.PHONY: cover
+cover:
+	go test -race -coverprofile=cover.out -coverpkg=./... ./...
+	go tool cover -html=cover.out -o cover.html
+
+$(GOLINT):
+	go install golang.org/x/lint/golint
 
 .PHONY: lint
-lint:
+lint: $(GOLINT)
 	@rm -rf lint.log
 	@echo "Checking formatting..."
-	@gofmt -d -s $(PACKAGE_FILES) 2>&1 | tee lint.log
+	@gofmt -d -s $(GO_FILES) 2>&1 | tee lint.log
 	@echo "Checking vet..."
-	@go vet $(PACKAGES) 2>&1 | tee -a lint.log
+	@go vet ./... 2>&1 | tee -a lint.log
 	@echo "Checking lint..."
-	@$(foreach dir,$(PACKAGES),golint $(dir) 2>&1 | tee -a lint.log;)
+	@$(GOLINT) ./... 2>&1 | tee -a lint.log
 	@echo "Checking for unresolved FIXMEs..."
 	@git grep -i fixme | grep -v -e '^vendor/' -e '^Makefile' | tee -a lint.log
 	@[ ! -s lint.log ]
-

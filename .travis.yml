@@ -2,29 +2,23 @@ sudo: false
 language: go
 go_import_path: go.uber.org/goleak
 
-go:
-  - 1.10.x
-  - 1.11.x
-  - 1.12.x
 env:
-- TEST=yes
+  global:
+    - GO111MODULE=on
 
 matrix:
   include:
   - go: 1.12.x
-    env: COVERAGE=yes LINT=yes
-
-cache:
-  directories:
-    - vendor
+  - go: 1.13.x
+    env: LINT=1
 
 install:
-  - make install_deps
+  - make install
 
 script:
-  - test -z "$TEST" || make test
-  - test -z "$COVERAGE" || scripts/coverage.sh
-  - test -z "$LINT" || make install_lint lint
+  - test -z "$LINT" || make lint
+  - make test
 
 after_success:
-  - test -z "$COVERAGE" || bash <(curl -s https://codecov.io/bash)
+  - make cover
+  - bash <(curl -s https://codecov.io/bash)
