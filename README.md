@@ -68,5 +68,3 @@ TestLeakyTest failed
 [ci]: https://travis-ci.com/uber-go/goleak
 [cov-img]: https://codecov.io/gh/uber-go/goleak/branch/master/graph/badge.svg
 [cov]: https://codecov.io/gh/uber-go/goleak
-[benchmarking suite]: https://github.com/uber-go/goleak/tree/master/benchmarks
-[glide.lock]: https://github.com/uber-go/goleak/blob/master/glide.lock
