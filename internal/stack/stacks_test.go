@@ -21,7 +21,9 @@
 package stack
 
 import (
+	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -46,7 +48,17 @@ func TestAll(t *testing.T) {
 		go waitForDone()
 	}
 
+	cur := Current()
 	got := All()
+
+	// Retry until the background stacks are not runnable/running.
+	for {
+		if !isBackgroundRunning(cur, got) {
+			break
+		}
+		runtime.Gosched()
+		got = All()
+	}
 
 	// We have exactly 7 gorotuines:
 	// "main" goroutine
@@ -104,6 +116,7 @@ func TestAllLargeStack(t *testing.T) {
 			if count == 0 {
 				started.Done()
 				<-done
+				return
 			}
 			f(count - 1)
 		}
@@ -126,3 +139,19 @@ type byGoroutineID []Stack
 func (ss byGoroutineID) Len() int           { return len(ss) }
 func (ss byGoroutineID) Less(i, j int) bool { return ss[i].ID() < ss[j].ID() }
 func (ss byGoroutineID) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
+
+// Note: This is the same logic as in ../../utils_test.go
+// Copy+pasted to avoid dependency loops and exporting this test-helper.
+func isBackgroundRunning(cur Stack, stacks []Stack) bool {
+	for _, s := range stacks {
+		if cur.ID() == s.ID() {
+			continue
+		}
+
+		if strings.Contains(s.State(), "run") {
+			return true
+		}
+	}
+
+	return false
+}
