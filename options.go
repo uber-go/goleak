@@ -78,6 +78,7 @@ func buildOpts(options ...Option) *opts {
 		isTestStack,
 		isSyscallStack,
 		isStdLibStack,
+		isTraceStack,
 	)
 	for _, option := range options {
 		option.apply(opts)
@@ -140,4 +141,12 @@ func isStdLibStack(s stack.Stack) bool {
 
 	// Using signal.Notify will start a runtime goroutine.
 	return strings.Contains(s.Full(), "runtime.ensureSigM")
+}
+
+func isTraceStack(s stack.Stack) bool {
+	if f := s.FirstFunction(); f != "runtime.goparkunlock" {
+		return false
+	}
+
+	return strings.Contains(s.Full(), "runtime.ReadTrace")
 }

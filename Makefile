@@ -17,6 +17,7 @@ install:
 .PHONY: test
 test:
 	go test -v -race ./...
+	go test -v -trace=/dev/null .
 
 .PHONY: cover
 cover:
