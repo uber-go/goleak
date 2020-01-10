@@ -2,10 +2,6 @@
 
 Goroutine leak detector to help avoid Goroutine leaks.
 
-## Development Status: Alpha
-
-goleak is still in development, and APIs are still in flux.
-
 ## Installation
 
 You can use `go get` to get the latest version:
@@ -61,6 +57,11 @@ TestLeakyTest failed
 .......
 ```
 
+## Stability
+
+goleak is v1 and follows [SemVer](http://semver.org/) strictly.
+
+No breaking changes will be made to exported APIs before 2.0.
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
 [doc]: https://godoc.org/go.uber.org/goleak
