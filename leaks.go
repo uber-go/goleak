@@ -55,6 +55,11 @@ func Find(options ...Option) error {
 	cur := stack.Current().ID()
 
 	opts := buildOpts(options...)
+
+	if opts.teardown != nil {
+		opts.teardown()
+	}
+
 	var stacks []stack.Stack
 	retry := true
 	for i := 0; retry; i++ {

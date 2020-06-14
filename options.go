@@ -39,6 +39,7 @@ const _defaultRetries = 20
 
 type opts struct {
 	filters    []func(stack.Stack) bool
+	teardown   func()
 	maxRetries int
 	maxSleep   time.Duration
 }
@@ -54,6 +55,13 @@ func (f optionFunc) apply(opts *opts) { f(opts) }
 func IgnoreTopFunction(f string) Option {
 	return addFilter(func(s stack.Stack) bool {
 		return s.FirstFunction() == f
+	})
+}
+
+// Teardown adds function that is executed after successful test pass and before leak check
+func Teardown(f func()) Option {
+	return optionFunc(func(opts *opts) {
+		opts.teardown = f
 	})
 }
 
