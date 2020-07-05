@@ -83,6 +83,16 @@ func TestVerifyNone(t *testing.T) {
 	bg.unblock()
 }
 
+func TestIgnoreCurrentStacks(t *testing.T) {
+	done := make(chan struct{})
+	go func() {
+		<-done
+	}()
+	VerifyNone(t, IgnoreCurrentStacks())
+	close(done)
+	VerifyNone(t)
+}
+
 func TestVerifyParallel(t *testing.T) {
 	t.Run("parallel", func(t *testing.T) {
 		t.Parallel()
