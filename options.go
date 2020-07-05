@@ -57,6 +57,18 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+// IgnoreCurrentStacks remembers all current stacks and ignores them on verifying.
+// This Option may be used in big projects that recently started to use go-leak.
+func IgnoreCurrentStacks() Option {
+	excludeIDSet := map[int]bool{}
+	for _, s := range stack.All() {
+		excludeIDSet[s.ID()] = true
+	}
+	return addFilter(func(s stack.Stack) bool {
+		return excludeIDSet[s.ID()]
+	})
+}
+
 func maxSleep(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxSleep = d
