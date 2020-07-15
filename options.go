@@ -57,9 +57,9 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
-// IgnoreCurrentStacks remembers all current stacks and ignores them on verifying.
-// This Option may be used in big projects that recently started to use go-leak.
-func IgnoreCurrentStacks() Option {
+// IgnoreCurrent records all current goroutines when the option is created, and ignores
+// them in any future Find/Verify calls.
+func IgnoreCurrent() Option {
 	excludeIDSet := map[int]bool{}
 	for _, s := range stack.All() {
 		excludeIDSet[s.ID()] = true

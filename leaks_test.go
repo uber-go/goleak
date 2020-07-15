@@ -22,6 +22,7 @@ package goleak
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -83,14 +84,55 @@ func TestVerifyNone(t *testing.T) {
 	bg.unblock()
 }
 
-func TestIgnoreCurrentStacks(t *testing.T) {
-	done := make(chan struct{})
-	go func() {
-		<-done
-	}()
-	VerifyNone(t, IgnoreCurrentStacks())
-	close(done)
-	VerifyNone(t)
+func TestIgnoreCurrent(t *testing.T) {
+	t.Run("Should ignore current", func(t *testing.T) {
+		defer VerifyNone(t)
+		done := make(chan struct{})
+		go func() {
+			<-done
+		}()
+		VerifyNone(t, IgnoreCurrent())
+		close(done)
+	})
+
+	t.Run("Should detect new leaks", func(t *testing.T) {
+		done := make(chan struct{})
+		defer VerifyNone(t)
+		defer close(done)
+		defer func(o Option) {
+			err := Find(o)
+			require.Error(t, err)
+		}(IgnoreCurrent())
+		go func() {
+			<-done
+		}()
+	})
+
+	t.Run("Should not ignore false positive", func(t *testing.T) {
+		defer VerifyNone(t)
+		const goroutinesCount = 5
+		wg := sync.WaitGroup{}
+		done := make(chan struct{})
+		for i := 0; i < goroutinesCount; i++ {
+			wg.Add(1)
+			go func() {
+				<-done
+				wg.Done()
+			}()
+		}
+		option := IgnoreCurrent()
+		close(done)
+		wg.Wait()
+		for i := 0; i < goroutinesCount; i++ {
+			ch := make(chan struct{})
+			go func() {
+				<-ch
+			}()
+			require.Error(t, Find(option))
+			close(ch)
+			VerifyNone(t)
+		}
+	})
 }
 
 func TestVerifyParallel(t *testing.T) {
