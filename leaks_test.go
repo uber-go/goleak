@@ -91,28 +91,51 @@ func TestIgnoreCurrent(t *testing.T) {
 		go func() {
 			<-done
 		}()
+
+		// We expect the above goroutine to be ignored.
 		VerifyNone(t, IgnoreCurrent())
 		close(done)
 	})
 
 	t.Run("Should detect new leaks", func(t *testing.T) {
-		done := make(chan struct{})
 		defer VerifyNone(t)
-		defer close(done)
-		defer func(o Option) {
-			err := Find(o)
-			require.Error(t, err)
-		}(IgnoreCurrent())
+
+		// There are no leaks currently.
+		VerifyNone(t)
+
+		done1 := make(chan struct{})
+		done2 := make(chan struct{})
+
 		go func() {
-			<-done
+			<-done1
 		}()
+
+		err := Find()
+		require.Error(t, err, "Expected to find background goroutine as leak")
+
+		opt := IgnoreCurrent()
+		VerifyNone(t, opt)
+
+		// A second goroutine started after IgnoreCurrent is a leak
+		go func() {
+			<-done2
+		}()
+
+		err = Find(opt)
+		require.Error(t, err, "Expect second goroutine to be flagged as a leak")
+
+		close(done1)
+		close(done2)
 	})
 
 	t.Run("Should not ignore false positive", func(t *testing.T) {
 		defer VerifyNone(t)
+
 		const goroutinesCount = 5
-		wg := sync.WaitGroup{}
+		var wg sync.WaitGroup
 		done := make(chan struct{})
+
+		// Spawn few goroutines before checking leaks
 		for i := 0; i < goroutinesCount; i++ {
 			wg.Add(1)
 			go func() {
@@ -120,16 +143,28 @@ func TestIgnoreCurrent(t *testing.T) {
 				wg.Done()
 			}()
 		}
+
+		// Store all goroutines
 		option := IgnoreCurrent()
+
+		// Free goroutines
 		close(done)
 		wg.Wait()
+
+		// We expect the below goroutines to be founded.
 		for i := 0; i < goroutinesCount; i++ {
 			ch := make(chan struct{})
+
 			go func() {
 				<-ch
 			}()
-			require.Error(t, Find(option))
+
+			require.Error(t, Find(option), "Expect spawned goroutine to be flagged as a leak")
+
+			// Free spawned goroutine
 			close(ch)
+
+			// Make sure that there are no leaks
 			VerifyNone(t)
 		}
 	})
