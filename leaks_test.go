@@ -87,6 +87,7 @@ func TestVerifyNone(t *testing.T) {
 func TestIgnoreCurrent(t *testing.T) {
 	t.Run("Should ignore current", func(t *testing.T) {
 		defer VerifyNone(t)
+
 		done := make(chan struct{})
 		go func() {
 			<-done
