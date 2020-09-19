@@ -32,15 +32,13 @@ type Option interface {
 	apply(*opts)
 }
 
-// We retry up to 20 times if we can't find the goroutine that
-// we are looking for. In between each attempt, we will sleep for
-// a short while to let any running goroutines complete.
-const _defaultRetries = 20
-
 type opts struct {
-	filters    []func(stack.Stack) bool
-	maxRetries int
-	maxSleep   time.Duration
+	filters  []func(stack.Stack) bool
+	maxSleep time.Duration
+	maxRetry time.Duration
+
+	sleep func(time.Duration)
+	now   func() time.Time
 }
 
 // optionFunc lets us easily write options without a custom type.
@@ -69,6 +67,16 @@ func IgnoreCurrent() Option {
 	})
 }
 
+// MaxRetry time for the retry.
+// We retry until d time if we can't find the goroutine that
+// we are looking for. In between each attempt, we will sleep for
+// a short while to let any running goroutines complete.
+func MaxRetry(d time.Duration) Option {
+	return optionFunc(func(opts *opts) {
+		opts.maxRetry = d
+	})
+}
+
 func maxSleep(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxSleep = d
@@ -83,8 +91,10 @@ func addFilter(f func(stack.Stack) bool) Option {
 
 func buildOpts(options ...Option) *opts {
 	opts := &opts{
-		maxRetries: _defaultRetries,
-		maxSleep:   100 * time.Millisecond,
+		maxRetry: 300 * time.Millisecond,
+		maxSleep: 100 * time.Millisecond,
+		sleep:    time.Sleep,
+		now:      time.Now,
 	}
 	opts.filters = append(opts.filters,
 		isTestStack,
@@ -107,17 +117,30 @@ func (vo *opts) filter(s stack.Stack) bool {
 	return false
 }
 
-func (vo *opts) retry(i int) bool {
-	if i >= vo.maxRetries {
-		return false
-	}
+func (vo *opts) newRetry() func() bool {
+	start := vo.now()
+	sleep := 0 * time.Microsecond
 
-	d := time.Duration(int(time.Microsecond) << uint(i))
-	if d > vo.maxSleep {
-		d = vo.maxSleep
+	return func() bool {
+		if sleep == 0 {
+			sleep = time.Microsecond
+			return true
+		}
+
+		if vo.now().Sub(start) >= vo.maxRetry {
+			return false
+		}
+
+		vo.sleep(sleep)
+
+		// simple backoff algorithm
+		sleep *= 2
+		if sleep > vo.maxSleep {
+			sleep = vo.maxSleep
+		}
+
+		return true
 	}
-	time.Sleep(d)
-	return true
 }
 
 // isTestStack is a default filter installed to automatically skip goroutines

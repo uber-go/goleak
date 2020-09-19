@@ -56,14 +56,13 @@ func Find(options ...Option) error {
 
 	opts := buildOpts(options...)
 	var stacks []stack.Stack
-	retry := true
-	for i := 0; retry; i++ {
+
+	for retry := opts.newRetry(); retry(); {
 		stacks = filterStacks(stack.All(), cur, opts)
 
 		if len(stacks) == 0 {
 			return nil
 		}
-		retry = opts.retry(i)
 	}
 
 	return fmt.Errorf("found unexpected goroutines:\n%s", stacks)
