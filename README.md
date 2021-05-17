@@ -65,7 +65,7 @@ No breaking changes will be made to exported APIs before 2.0.
 
 [doc-img]: https://godoc.org/go.uber.org/goleak?status.svg
 [doc]: https://godoc.org/go.uber.org/goleak
-[ci-img]: https://travis-ci.com/uber-go/goleak.svg?branch=master
-[ci]: https://travis-ci.com/uber-go/goleak
+[ci-img]: https://github.com/uber-go/goleak/actions/workflows/go.yml/badge.svg
+[ci]: https://github.com/uber-go/goleak/actions/workflows/go.yml
 [cov-img]: https://codecov.io/gh/uber-go/goleak/branch/master/graph/badge.svg
 [cov]: https://codecov.io/gh/uber-go/goleak
