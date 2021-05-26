@@ -66,13 +66,45 @@ func TestOptionsFilters(t *testing.T) {
 }
 
 func TestOptionsRetry(t *testing.T) {
-	opts := buildOpts()
-	opts.maxRetries = 50 // initial attempt + 50 retries = 11
+	opts := buildOpts(MaxRetry(30 * time.Millisecond))
 	opts.maxSleep = time.Millisecond
 
-	for i := 0; i < 50; i++ {
-		assert.True(t, opts.retry(i), "Attempt %v/51 should allow retrying", i)
+	sleeps := []time.Duration{}
+	continues := []bool{}
+
+	opts.sleep = func(t time.Duration) {
+		sleeps = append(sleeps, t)
 	}
-	assert.False(t, opts.retry(51), "Attempt 51/51 should not allow retrying")
-	assert.False(t, opts.retry(52), "Attempt 52/51 should not allow retrying")
+
+	now := time.Now()
+	opts.now = func() time.Time {
+		if len(sleeps) < 35 {
+			return now
+		}
+		return now.Add(time.Second)
+	}
+
+	retry := opts.newRetry()
+
+	for i := 0; i < 40; i++ {
+		continues = append(continues, retry())
+	}
+
+	assert.True(t, continues[0])
+	assert.Equal(t, time.Microsecond, sleeps[0])
+
+	assert.True(t, continues[1])
+	assert.Equal(t, 2*time.Microsecond, sleeps[1])
+
+	assert.True(t, continues[0])
+	assert.Equal(t, 4*time.Microsecond, sleeps[2])
+
+	assert.True(t, continues[0])
+	assert.Equal(t, 8*time.Microsecond, sleeps[3])
+
+	assert.True(t, continues[30])
+	assert.Equal(t, time.Millisecond, sleeps[30])
+
+	assert.False(t, continues[36])
+	assert.Len(t, sleeps, 35)
 }
