@@ -6,9 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.1.11]
 ### Fixed
-- Documentation fix.
-- Update dependency on stretchr/testify to v1.7.0.
-- Update dependency on golang.org/x/tools to address CVE-2020-14040.
+- Documentation fix on how to test.
+- Update dependency on stretchr/testify to v1.7.0. (#59)
+- Update dependency on golang.org/x/tools to address CVE-2020-14040. (#62)
 
 ## [1.1.10]
 ### Added
