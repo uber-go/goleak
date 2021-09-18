@@ -61,3 +61,27 @@ func VerifyTestMain(m TestingM, options ...Option) {
 
 	_osExit(exitCode)
 }
+
+type testingM struct {
+	TestingM
+	callback func(int) int
+}
+
+func (m *testingM) Run() int {
+	return m.callback(m.TestingM.Run())
+}
+
+// WithCallback returns a TestingM wrapped with callback on m.Run returning
+func WithCallback(m TestingM, callback func(int) int) *testingM {
+	if callback == nil {
+		callback = func(i int) int {
+			return i
+		}
+	}
+
+	return &testingM{
+		TestingM: m,
+		callback: callback,
+	}
+}
+

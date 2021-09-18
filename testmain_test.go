@@ -76,3 +76,34 @@ func TestVerifyTestMain(t *testing.T) {
 	assert.Equal(t, 0, <-exitCode, "Expect no errors without leaks")
 	assert.NotContains(t, <-stderr, "goleak: Errors", "No errors on successful run without leaks")
 }
+
+var callback = func(ch chan<- struct{}) func(int) int {
+	ch <- struct{}{}
+	return func(i int) int {
+		return i
+	}
+}
+
+func TestWithCallback(t *testing.T) {
+	defer clearOSStubs()
+	exitCode, stderr := osStubs()
+	blocked := startBlockedG()
+
+	ch := make(chan struct{}, 1)
+
+	VerifyTestMain(WithCallback(dummyTestMain(7), callback(ch)))
+	<-ch
+	assert.Equal(t, 7, <-exitCode, "Exit code should not be modified")
+	assert.NotContains(t, <-stderr, "goleak: Errors", "Ignore leaks on unsuccessful runs")
+
+	VerifyTestMain(WithCallback(dummyTestMain(0), callback(ch)))
+	<-ch
+	assert.Equal(t, 1, <-exitCode, "Expect error due to leaks on successful runs")
+	assert.Contains(t, <-stderr, "goleak: Errors", "Find leaks on successful runs")
+
+	blocked.unblock()
+	VerifyTestMain(WithCallback(dummyTestMain(0), callback(ch)))
+	<-ch
+	assert.Equal(t, 0, <-exitCode, "Expect no errors without leaks")
+	assert.NotContains(t, <-stderr, "goleak: Errors", "No errors on successful run without leaks")
+}
