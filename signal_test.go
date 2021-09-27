@@ -35,7 +35,7 @@ func TestNoLeaks(t *testing.T) {
 	require.NoError(t, goleak.Find(), "Found leaks caused by signal import")
 
 	// Register some signal handlers and ensure there's no leaks.
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	require.NoError(t, goleak.Find(), "Found leaks caused by signal.Notify")
 
