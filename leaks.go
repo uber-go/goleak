@@ -69,12 +69,21 @@ func Find(options ...Option) error {
 	return fmt.Errorf("found unexpected goroutines:\n%s", stacks)
 }
 
+type testHelper interface {
+	Helper()
+}
+
 // VerifyNone marks the given TestingT as failed if any extra goroutines are
 // found by Find. This is a helper method to make it easier to integrate in
 // tests by doing:
 //
 //	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
+	if h, ok := t.(testHelper); ok {
+		// Mark this function as a test helper, if available.
+		h.Helper()
+	}
+
 	if err := Find(options...); err != nil {
 		t.Error(err)
 	}
