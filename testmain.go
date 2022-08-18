@@ -41,9 +41,9 @@ type TestingM interface {
 // verify that there were no goroutine leaks.
 // To use it, your TestMain function should look like:
 //
-//  func TestMain(m *testing.M) {
-//    goleak.VerifyTestMain(m)
-//  }
+//	func TestMain(m *testing.M) {
+//	  goleak.VerifyTestMain(m)
+//	}
 //
 // See https://golang.org/pkg/testing/#hdr-Main for more details.
 //
