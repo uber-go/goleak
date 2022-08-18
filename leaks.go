@@ -72,7 +72,8 @@ func Find(options ...Option) error {
 // VerifyNone marks the given TestingT as failed if any extra goroutines are
 // found by Find. This is a helper method to make it easier to integrate in
 // tests by doing:
-// 	defer VerifyNone(t)
+//
+//	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
 	if err := Find(options...); err != nil {
 		t.Error(err)
