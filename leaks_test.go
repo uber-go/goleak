@@ -51,6 +51,10 @@ func TestFind(t *testing.T) {
 	// Once we unblock the goroutine, we shouldn't have leaks.
 	bg.unblock()
 	require.NoError(t, Find(), "Should find no leaks by default")
+
+	// Find can't take in Cleanup option
+	err = Find(Cleanup(func(int) { assert.Fail(t, "this should not be called") }))
+	require.Error(t, err, "Should exit with invalid option")
 }
 
 func TestFindRetry(t *testing.T) {

@@ -55,6 +55,9 @@ func Find(options ...Option) error {
 	cur := stack.Current().ID()
 
 	opts := buildOpts(options...)
+	if opts.teardown != nil {
+		return fmt.Errorf("Cleanup can only be passed to VerifyNone or VerifyTestMain")
+	}
 	var stacks []stack.Stack
 	retry := true
 	for i := 0; retry; i++ {
@@ -79,12 +82,17 @@ type testHelper interface {
 //
 //	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
+	opts := buildOpts(options...)
 	if h, ok := t.(testHelper); ok {
 		// Mark this function as a test helper, if available.
 		h.Helper()
 	}
 
-	if err := Find(options...); err != nil {
+	if err := Find(opts); err != nil {
 		t.Error(err)
+	}
+
+	if opts.teardown != nil {
+		opts.teardown(0)
 	}
 }

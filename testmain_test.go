@@ -75,4 +75,13 @@ func TestVerifyTestMain(t *testing.T) {
 	VerifyTestMain(dummyTestMain(0))
 	assert.Equal(t, 0, <-exitCode, "Expect no errors without leaks")
 	assert.NotContains(t, <-stderr, "goleak: Errors", "No errors on successful run without leaks")
+
+	cleanupCalled := false
+	cleanupExitcode := 0
+	VerifyTestMain(dummyTestMain(3), Cleanup(func(ec int) {
+		cleanupCalled = true
+		cleanupExitcode = ec
+	}))
+	assert.True(t, cleanupCalled)
+	assert.Equal(t, 3, cleanupExitcode)
 }
