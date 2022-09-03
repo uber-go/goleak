@@ -86,6 +86,13 @@ func TestVerifyNone(t *testing.T) {
 	VerifyNone(ft, testOptions())
 	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine")
 	bg.unblock()
+
+	cleanupCalled := false
+	VerifyNone(ft, Cleanup(func(c int) {
+		assert.Equal(t, 0, c)
+		cleanupCalled = true
+	}))
+	require.True(t, cleanupCalled, "expect cleanup registered callback to be called")
 }
 
 func TestIgnoreCurrent(t *testing.T) {
