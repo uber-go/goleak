@@ -63,6 +63,10 @@ func TestOptionsFilters(t *testing.T) {
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
 	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).run"))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
+
+	// If we add an extra filter to ignore startBlockedG (second item in the stack), it shouldn't match.
+	opts = buildOpts(IgnoreAnyFunction("go.uber.org/goleak.startBlockedG"))
+	require.Zero(t, countUnfiltered(), "startBlockedG should be filtered out. running: %v", stack.All())
 }
 
 func TestOptionsRetry(t *testing.T) {

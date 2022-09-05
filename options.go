@@ -57,6 +57,15 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+// IgnoreAnyFunction ignores any goroutines where the specified function
+// is anywhere in the stack. The function name should be fully qualified,
+// e.g., go.uber.org/goleak.IgnoreTopFunction
+func IgnoreAnyFunction(f string) Option {
+	return addFilter(func(s stack.Stack) bool {
+		return strings.Contains(s.Full(), f)
+	})
+}
+
 // IgnoreCurrent records all current goroutines when the option is created, and ignores
 // them in any future Find/Verify calls.
 func IgnoreCurrent() Option {
