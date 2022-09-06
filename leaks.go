@@ -21,6 +21,7 @@
 package goleak
 
 import (
+	"errors"
 	"fmt"
 
 	"go.uber.org/goleak/internal/stack"
@@ -55,6 +56,9 @@ func Find(options ...Option) error {
 	cur := stack.Current().ID()
 
 	opts := buildOpts(options...)
+	if opts.cleanup != nil {
+		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
+	}
 	var stacks []stack.Stack
 	retry := true
 	for i := 0; retry; i++ {
@@ -79,12 +83,20 @@ type testHelper interface {
 //
 //	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
+	opts := buildOpts(options...)
+	var cleanup func(int)
+	cleanup, opts.cleanup = opts.cleanup, nil
+
 	if h, ok := t.(testHelper); ok {
 		// Mark this function as a test helper, if available.
 		h.Helper()
 	}
 
-	if err := Find(options...); err != nil {
+	if err := Find(opts); err != nil {
 		t.Error(err)
+	}
+
+	if cleanup != nil {
+		cleanup(0)
 	}
 }
