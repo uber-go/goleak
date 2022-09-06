@@ -46,7 +46,7 @@ type opts struct {
 
 // implement apply so that opts struct itself can be used as
 // an Option.
-func (o opts) apply(opts *opts) {
+func (o *opts) apply(opts *opts) {
 	opts.filters = o.filters
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
@@ -68,7 +68,7 @@ func IgnoreTopFunction(f string) Option {
 }
 
 // Cleanup sets up a cleanup function that will be executed at the
-// end of the leak.
+// end of the leak check.
 // When passed to [VerifyTestMain], the exit code passed to cleanupFunc
 // will be set to the exit code of TestMain.
 // When passed to [VerifyNone], the exit code will be set to 0.

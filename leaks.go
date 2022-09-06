@@ -21,6 +21,7 @@
 package goleak
 
 import (
+	"errors"
 	"fmt"
 
 	"go.uber.org/goleak/internal/stack"
@@ -83,16 +84,19 @@ type testHelper interface {
 //	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
 	opts := buildOpts(options...)
+	teardown := opts.teardown
 	if h, ok := t.(testHelper); ok {
 		// Mark this function as a test helper, if available.
 		h.Helper()
 	}
 
+	// Find does not appreciate teardowns
+	opts.teardown = nil
 	if err := Find(opts); err != nil {
 		t.Error(err)
 	}
 
-	if opts.teardown != nil {
-		opts.teardown(0)
+	if teardown != nil {
+		teardown(0)
 	}
 }
