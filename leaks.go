@@ -84,14 +84,14 @@ type testHelper interface {
 //	defer VerifyNone(t)
 func VerifyNone(t TestingT, options ...Option) {
 	opts := buildOpts(options...)
-	cleanup := opts.cleanup
+	var cleanup func(int)
+	cleanup, opts.cleanup = opts.cleanup, nil
+
 	if h, ok := t.(testHelper); ok {
 		// Mark this function as a test helper, if available.
 		h.Helper()
 	}
 
-	// Find does not appreciate cleanups
-	opts.cleanup = nil
 	if err := Find(opts); err != nil {
 		t.Error(err)
 	}

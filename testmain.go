@@ -52,13 +52,12 @@ type TestingM interface {
 func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 	opts := buildOpts(options...)
+
 	var cleanup func(int)
 	cleanup, opts.cleanup = opts.cleanup, nil
-
 	if cleanup == nil {
 		cleanup = _osExit
 	}
-
 	defer func() { cleanup(exitCode) }()
 
 	if exitCode == 0 {
