@@ -62,8 +62,6 @@ func VerifyTestMain(m TestingM, options ...Option) {
 	defer func() { cleanup(exitCode) }()
 
 	if exitCode == 0 {
-		// Find does not appreciate cleanup option.
-		opts.cleanup = nil
 		if err := Find(opts); err != nil {
 			fmt.Fprintf(_osStderr, "goleak: Errors on successful test run: %v\n", err)
 			exitCode = 1
