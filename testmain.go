@@ -52,18 +52,18 @@ type TestingM interface {
 func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 	opts := buildOpts(options...)
-	teardown := opts.teardown
+	cleanup := opts.cleanup
 
 	if exitCode == 0 {
-		// Find does not appreciate teardowns
-		opts.teardown = nil
+		// Find does not appreciate cleanup option.
+		opts.cleanup = nil
 		if err := Find(opts); err != nil {
 			fmt.Fprintf(_osStderr, "goleak: Errors on successful test run: %v\n", err)
 			exitCode = 1
 		}
 	}
-	if teardown != nil {
-		teardown(exitCode)
+	if cleanup != nil {
+		cleanup(exitCode)
 	} else {
 		_osExit(exitCode)
 	}

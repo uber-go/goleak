@@ -41,7 +41,7 @@ type opts struct {
 	filters    []func(stack.Stack) bool
 	maxRetries int
 	maxSleep   time.Duration
-	teardown   func(int)
+	cleanup    func(int)
 }
 
 // implement apply so that opts struct itself can be used as
@@ -50,7 +50,7 @@ func (o *opts) apply(opts *opts) {
 	opts.filters = o.filters
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
-	opts.teardown = o.teardown
+	opts.cleanup = o.cleanup
 }
 
 // optionFunc lets us easily write options without a custom type.
@@ -75,7 +75,7 @@ func IgnoreTopFunction(f string) Option {
 // This cannot be passed to [Find].
 func Cleanup(cleanupFunc func(exitCode int)) Option {
 	return optionFunc(func(opts *opts) {
-		opts.teardown = cleanupFunc
+		opts.cleanup = cleanupFunc
 	})
 }
 
