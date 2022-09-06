@@ -56,7 +56,7 @@ func Find(options ...Option) error {
 
 	opts := buildOpts(options...)
 	if opts.teardown != nil {
-		return fmt.Errorf("Cleanup can only be passed to VerifyNone or VerifyTestMain")
+		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
 	}
 	var stacks []stack.Stack
 	retry := true
