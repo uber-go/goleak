@@ -40,17 +40,26 @@ func testOptions() Option {
 }
 
 func TestFind(t *testing.T) {
-	require.NoError(t, Find(), "Should find no leaks by default")
+	t.Run("Should find no leaks by default", func(t *testing.T) {
+		require.NoError(t, Find())
+	})
 
-	bg := startBlockedG()
-	err := Find(testOptions())
-	require.Error(t, err, "Should find leaks with leaked goroutine")
-	assert.Contains(t, err.Error(), "blockedG")
-	assert.Contains(t, err.Error(), "created by go.uber.org/goleak.startBlockedG")
+	t.Run("Find leaks with leaked goroutine", func(t *testing.T) {
+		bg := startBlockedG()
+		err := Find(testOptions())
+		require.Error(t, err, "Should find leaks with leaked goroutine")
+		assert.ErrorContains(t, err, "blockedG")
+		assert.ErrorContains(t, err, "created by go.uber.org/goleak.startBlockedG")
 
-	// Once we unblock the goroutine, we shouldn't have leaks.
-	bg.unblock()
-	require.NoError(t, Find(), "Should find no leaks by default")
+		// Once we unblock the goroutine, we shouldn't have leaks.
+		bg.unblock()
+		require.NoError(t, Find(), "Should find no leaks by default")
+	})
+
+	t.Run("Find can't take in Cleanup option", func(t *testing.T) {
+		err := Find(Cleanup(func(int) { assert.Fail(t, "this should not be called") }))
+		require.Error(t, err, "Should exit with invalid option")
+	})
 }
 
 func TestFindRetry(t *testing.T) {
@@ -74,14 +83,26 @@ func (ft *fakeT) Error(args ...interface{}) {
 }
 
 func TestVerifyNone(t *testing.T) {
-	ft := &fakeT{}
-	VerifyNone(ft)
-	require.Empty(t, ft.errors, "Expect no errors from VerifyNone")
+	t.Run("VerifyNone finds leaks", func(t *testing.T) {
+		ft := &fakeT{}
+		VerifyNone(ft)
+		require.Empty(t, ft.errors, "Expect no errors from VerifyNone")
 
-	bg := startBlockedG()
-	VerifyNone(ft, testOptions())
-	require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine")
-	bg.unblock()
+		bg := startBlockedG()
+		VerifyNone(ft, testOptions())
+		require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine")
+		bg.unblock()
+	})
+
+	t.Run("cleanup registered callback should be called", func(t *testing.T) {
+		ft := &fakeT{}
+		cleanupCalled := false
+		VerifyNone(ft, Cleanup(func(c int) {
+			assert.Equal(t, 0, c)
+			cleanupCalled = true
+		}))
+		require.True(t, cleanupCalled, "expect cleanup registered callback to be called")
+	})
 }
 
 func TestIgnoreCurrent(t *testing.T) {
