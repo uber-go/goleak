@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - VerifyNone is a test Helper. (#75)
 
+## [1.1.12]
+### Fixed
+- Fixed logic for ignoring trace related goroutines on Go versions 1.16 and above.
+
 ## [1.1.11]
 ### Fixed
 - Documentation fix on how to test.
