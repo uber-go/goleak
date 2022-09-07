@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - VerifyNone is a test Helper. (#75)
 
+Thanks to @tallclair for their contribution to this release.
+
 [1.2.0]: https://github.com/uber-go/goleak/compare/v1.1.12...v1.2.0
 
 ## [1.1.12]
