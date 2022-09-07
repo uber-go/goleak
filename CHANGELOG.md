@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - VerifyNone is a test Helper. (#75)
 
+[1.2.0]: https://github.com/uber-go/goleak/compare/v1.1.12...v1.2.0
+
 ## [1.1.12]
 ### Fixed
 - Fixed logic for ignoring trace related goroutines on Go versions 1.16 and above.
+
+[1.1.12]: https://github.com/uber-go/goleak/compare/v1.1.11...v1.1.12
 
 ## [1.1.11]
 ### Fixed
@@ -21,11 +25,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Update dependency on stretchr/testify to v1.7.0. (#59)
 - Update dependency on golang.org/x/tools to address CVE-2020-14040. (#62)
 
+[1.1.11]: https://github.com/uber-go/goleak/compare/v1.1.10...v1.1.11
+
 ## [1.1.10]
 ### Added
 - [#49]: Add option to ignore current goroutines, which checks for any additional leaks and allows for incremental adoption of goleak in larger projects.
 
 Thanks to @denis-tingajkin for their contributions to this release.
+
+[#49]: https://github.com/uber-go/goleak/pull/49
+[1.1.10]: https://github.com/uber-go/goleak/compare/v1.0.0...v1.1.10
 
 ## [1.0.0]
 ### Changed
@@ -34,8 +43,7 @@ Thanks to @denis-tingajkin for their contributions to this release.
 ### Fixed
 - Ignore trace related goroutines that cause false positives with -trace.
 
+[1.0.0]: https://github.com/uber-go/goleak/compare/v0.10.0...v1.0.0
+
 ## 0.10.0
 - Initial release.
-
-[1.0.0]: https://github.com/uber-go/goleak/compare/v0.10.0...v1.0.0
-[#49]: https://github.com/uber-go/goleak/pull/49
