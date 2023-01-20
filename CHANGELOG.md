@@ -47,5 +47,7 @@ Thanks to @denis-tingajkin for their contributions to this release.
 
 [1.0.0]: https://github.com/uber-go/goleak/compare/v0.10.0...v1.0.0
 
-## 0.10.0
+## [0.10.0]
 - Initial release.
+
+[0.10.0]: https://github.com/uber-go/goleak/compare/v0.10.0...HEAD
