@@ -21,6 +21,7 @@
 package goleak
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -32,10 +33,14 @@ type Option interface {
 	apply(*opts)
 }
 
-// We retry up to 20 times if we can't find the goroutine that
-// we are looking for. In between each attempt, we will sleep for
-// a short while to let any running goroutines complete.
-const _defaultRetries = 20
+const (
+	// We retry up to default 20 times if we can't find the goroutine that
+	// we are looking for.
+	_defaultRetries = 20
+	// In between each retry attempt, sleep for up to default 100 microseconds
+	// to let any running goroutine completes.
+	_defaultSleepTime = 100 * time.Microsecond
+)
 
 type opts struct {
 	filters    []func(stack.Stack) bool
@@ -51,6 +56,27 @@ func (o *opts) apply(opts *opts) {
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
 	opts.cleanup = o.cleanup
+}
+
+// set the defaults when not configured.
+func (o *opts) defaults() {
+	if o.maxRetries == 0 {
+		o.maxRetries = _defaultRetries
+	}
+	if o.maxSleep == time.Duration(0) {
+		o.maxSleep = _defaultSleepTime
+	}
+}
+
+// validate the options.
+func (o *opts) validate() error {
+	if o.maxRetries < 0 {
+		return errors.New("maxRetries should be greater than 0")
+	}
+	if o.maxSleep < time.Duration(0) {
+		return errors.New("maxSleep should be greater than 0s")
+	}
+	return nil
 }
 
 // optionFunc lets us easily write options without a custom type.
@@ -91,9 +117,15 @@ func IgnoreCurrent() Option {
 	})
 }
 
-func maxSleep(d time.Duration) Option {
+func MaxSleep(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxSleep = d
+	})
+}
+
+func MaxRetries(num int) Option {
+	return optionFunc(func(opts *opts) {
+		opts.maxRetries = num
 	})
 }
 
@@ -104,10 +136,7 @@ func addFilter(f func(stack.Stack) bool) Option {
 }
 
 func buildOpts(options ...Option) *opts {
-	opts := &opts{
-		maxRetries: _defaultRetries,
-		maxSleep:   100 * time.Millisecond,
-	}
+	opts := &opts{}
 	opts.filters = append(opts.filters,
 		isTestStack,
 		isSyscallStack,
@@ -117,6 +146,8 @@ func buildOpts(options ...Option) *opts {
 	for _, option := range options {
 		option.apply(opts)
 	}
+
+	opts.defaults()
 	return opts
 }
 
