@@ -68,17 +68,17 @@ func TestOptionsFilters(t *testing.T) {
 func TestBuildOptions(t *testing.T) {
 	// With default options.
 	opts := buildOpts()
-	assert.Equal(t, _defaultSleepTime, opts.maxSleep, "value of maxSleep not right")
-	assert.Equal(t, _defaultRetries, opts.maxRetries, "value of maxRetries not right")
+	assert.Equal(t, _defaultSleepInterval, opts.maxSleep, "value of maxSleep not right")
+	assert.Equal(t, _defaultRetryAttempts, opts.maxRetries, "value of maxRetries not right")
 
 	// With customized options.
-	opts = buildOpts(MaxRetries(50), MaxSleep(time.Microsecond))
+	opts = buildOpts(MaxRetryAttempts(50), MaxSleepInterval(time.Microsecond))
 	assert.Equal(t, time.Microsecond, opts.maxSleep, "value of maxSleep not right")
 	assert.Equal(t, 50, opts.maxRetries, "value of maxRetries not right")
 }
 
 func TestOptionsRetry(t *testing.T) {
-	opts := buildOpts(MaxSleep(time.Millisecond), MaxRetries(50)) // initial attempt + 50 retries = 51
+	opts := buildOpts(MaxSleepInterval(time.Millisecond), MaxRetryAttempts(50)) // initial attempt + 50 retries = 51
 
 	for i := 0; i < 50; i++ {
 		assert.True(t, opts.retry(i), "Attempt %v/51 should allow retrying", i)

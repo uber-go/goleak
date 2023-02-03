@@ -36,10 +36,10 @@ type Option interface {
 const (
 	// We retry up to default 20 times if we can't find the goroutine that
 	// we are looking for.
-	_defaultRetries = 20
+	_defaultRetryAttempts = 20
 	// In between each retry attempt, sleep for up to default 100 microseconds
 	// to let any running goroutine completes.
-	_defaultSleepTime = 100 * time.Microsecond
+	_defaultSleepInterval = 100 * time.Microsecond
 )
 
 type opts struct {
@@ -58,23 +58,13 @@ func (o *opts) apply(opts *opts) {
 	opts.cleanup = o.cleanup
 }
 
-// set the defaults when not configured.
-func (o *opts) defaults() {
-	if o.maxRetries == 0 {
-		o.maxRetries = _defaultRetries
-	}
-	if o.maxSleep == time.Duration(0) {
-		o.maxSleep = _defaultSleepTime
-	}
-}
-
 // validate the options.
 func (o *opts) validate() error {
 	if o.maxRetries < 0 {
-		return errors.New("maxRetries should be greater than 0")
+		return errors.New("maxRetryAttempts should be greater than 0")
 	}
 	if o.maxSleep < time.Duration(0) {
-		return errors.New("maxSleep should be greater than 0s")
+		return errors.New("maxSleepInterval should be greater than 0s")
 	}
 	return nil
 }
@@ -117,13 +107,20 @@ func IgnoreCurrent() Option {
 	})
 }
 
-func MaxSleep(d time.Duration) Option {
+// MaxSleepInterval sets the maximum sleep time in-between each retry attempt.
+// The sleep duration is growing in an exponential backoff but limits to the value we set.
+// If not configured, default to 100 microseconds.
+func MaxSleepInterval(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxSleep = d
 	})
 }
 
-func MaxRetries(num int) Option {
+// MaxRetryAttempts sets the retry upper limit.
+// When finding extra goroutines, we'll retry until all goroutines complete
+// or end up with the maximum retry attempts.
+// If not configured, default to 20 times.
+func MaxRetryAttempts(num int) Option {
 	return optionFunc(func(opts *opts) {
 		opts.maxRetries = num
 	})
@@ -136,7 +133,10 @@ func addFilter(f func(stack.Stack) bool) Option {
 }
 
 func buildOpts(options ...Option) *opts {
-	opts := &opts{}
+	opts := &opts{
+		maxRetries: _defaultRetryAttempts,
+		maxSleep:   _defaultSleepInterval,
+	}
 	opts.filters = append(opts.filters,
 		isTestStack,
 		isSyscallStack,
@@ -147,7 +147,6 @@ func buildOpts(options ...Option) *opts {
 		option.apply(opts)
 	}
 
-	opts.defaults()
 	return opts
 }
 
