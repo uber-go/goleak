@@ -1,6 +1,6 @@
 export GOBIN ?= $(shell pwd)/bin
 
-GOLINT = $(GOBIN)/golint
+GOLINT = $(GOBIN)/golangci-lint
 
 GO_FILES := $(shell \
 	find . '(' -path '*/.*' -o -path './vendor' ')' -prune \
@@ -24,18 +24,16 @@ cover:
 	go test -race -coverprofile=cover.out -coverpkg=./... ./...
 	go tool cover -html=cover.out -o cover.html
 
+# Note that installation via "go install" is not recommended
+# (https://golangci-lint.run/usage/install/#install-from-source).
+# If this causes problems, install a pre-built binary.
+#
+# When bumping the version here, then also bump the version in
+# .github/workflows/golangci-lint.yml
 $(GOLINT):
-	go install golang.org/x/lint/golint
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
 
 .PHONY: lint
 lint: $(GOLINT)
-	@rm -rf lint.log
-	@echo "Checking formatting..."
-	@gofmt -d -s $(GO_FILES) 2>&1 | tee lint.log
-	@echo "Checking vet..."
-	@go vet ./... 2>&1 | tee -a lint.log
 	@echo "Checking lint..."
-	@$(GOLINT) ./... 2>&1 | tee -a lint.log
-	@echo "Checking for unresolved FIXMEs..."
-	@git grep -i fixme | grep -v -e '^vendor/' -e '^Makefile' | tee -a lint.log
-	@[ ! -s lint.log ]
+	@$(GOLINT) run ./...

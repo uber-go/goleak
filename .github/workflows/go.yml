@@ -38,10 +38,6 @@ jobs:
     - name: Download Dependencies
       run: go mod download
 
-    - name: Lint
-      if: matrix.latest
-      run: make lint
-
     - name: Test
       run: make cover
 
