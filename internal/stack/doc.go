@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Uber Technologies, Inc.
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,12 +18,5 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-//go:build tools
-// +build tools
-
-package tools
-
-import (
-	// Tools we use during development.
-	_ "github.com/mgechev/revive"
-)
+// Package stack is used for parsing stacks from `runtime.Stack`.
+package stack
