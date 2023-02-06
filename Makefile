@@ -35,7 +35,7 @@ lint: $(REVIVE)
 	@echo "Checking vet..."
 	@go vet ./... 2>&1 | tee -a lint.log
 	@echo "Checking lint..."
-	@$(REVIVE) -config ./tools/revive.toml ./... 2>&1 | tee -a lint.log
+	@$(REVIVE) -set_exit_status ./... 2>&1 | tee -a lint.log
 	@echo "Checking for unresolved FIXMEs..."
 	@git grep -i fixme | grep -v -e '^vendor/' -e '^Makefile' | tee -a lint.log
 	@[ ! -s lint.log ]
