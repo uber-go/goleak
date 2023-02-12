@@ -1,4 +1,4 @@
-module go.uber.org/revive
+module go.uber.org/goleak/tools
 
 go 1.18
 
