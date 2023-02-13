@@ -65,10 +65,20 @@ func TestOptionsFilters(t *testing.T) {
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
 }
 
-func TestOptionsRetry(t *testing.T) {
+func TestBuildOptions(t *testing.T) {
+	// With default options.
 	opts := buildOpts()
-	opts.maxRetries = 50 // initial attempt + 50 retries = 11
-	opts.maxSleep = time.Millisecond
+	assert.Equal(t, _defaultSleepInterval, opts.maxSleep, "value of maxSleep not right")
+	assert.Equal(t, _defaultRetryAttempts, opts.maxRetries, "value of maxRetries not right")
+
+	// With customized options.
+	opts = buildOpts(MaxRetryAttempts(50), MaxSleepInterval(time.Microsecond))
+	assert.Equal(t, time.Microsecond, opts.maxSleep, "value of maxSleep not right")
+	assert.Equal(t, 50, opts.maxRetries, "value of maxRetries not right")
+}
+
+func TestOptionsRetry(t *testing.T) {
+	opts := buildOpts(MaxSleepInterval(time.Millisecond), MaxRetryAttempts(50)) // initial attempt + 50 retries = 51
 
 	for i := 0; i < 50; i++ {
 		assert.True(t, opts.retry(i), "Attempt %v/51 should allow retrying", i)

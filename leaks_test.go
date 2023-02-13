@@ -36,7 +36,7 @@ var _ = TestingT(testing.TB(nil))
 // testOptions passes a shorter max sleep time, used so tests don't wait
 // ~1 second in cases where we expect Find to error out.
 func testOptions() Option {
-	return maxSleep(time.Millisecond)
+	return MaxSleepInterval(time.Millisecond)
 }
 
 func TestFind(t *testing.T) {
@@ -59,6 +59,16 @@ func TestFind(t *testing.T) {
 	t.Run("Find can't take in Cleanup option", func(t *testing.T) {
 		err := Find(Cleanup(func(int) { assert.Fail(t, "this should not be called") }))
 		require.Error(t, err, "Should exit with invalid option")
+	})
+
+	t.Run("Find should return error when maxRetries is less than 0", func(t *testing.T) {
+		err := Find(MaxRetryAttempts(-1))
+		require.Error(t, err, "maxRetries should be greater than 0")
+	})
+
+	t.Run("Find should return error when maxSleep is less than 0s", func(t *testing.T) {
+		err := Find(MaxSleepInterval(time.Duration(-1)))
+		require.Error(t, err, "maxSleep should be greater than 0s")
 	})
 }
 
