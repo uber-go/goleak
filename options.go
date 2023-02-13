@@ -63,7 +63,7 @@ func (o *opts) validate() error {
 	if o.maxRetries < 0 {
 		return errors.New("maxRetryAttempts should be greater than 0")
 	}
-	if o.maxSleep < time.Duration(0) {
+	if o.maxSleep <= 0 {
 		return errors.New("maxSleepInterval should be greater than 0s")
 	}
 	return nil
@@ -108,7 +108,7 @@ func IgnoreCurrent() Option {
 }
 
 // MaxSleepInterval sets the maximum sleep time in-between each retry attempt.
-// The sleep duration is growing in an exponential backoff but limits to the value we set.
+// The sleep duration grows in an exponential backoff, to a maximum of the value specified here.
 // If not configured, default to 100 microseconds.
 func MaxSleepInterval(d time.Duration) Option {
 	return optionFunc(func(opts *opts) {
