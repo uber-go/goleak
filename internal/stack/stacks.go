@@ -34,10 +34,10 @@ const _defaultBufferSize = 64 * 1024 // 64 KiB
 
 // Stack represents a single Goroutine's stack.
 type Stack struct {
-	id            int
-	state         string
-	firstFunction string
-	fullStack     *bytes.Buffer
+	id        int
+	state     string
+	functions []string
+	fullStack *bytes.Buffer
 }
 
 // ID returns the goroutine ID.
@@ -57,13 +57,21 @@ func (s Stack) Full() string {
 
 // FirstFunction returns the name of the first function on the stack.
 func (s Stack) FirstFunction() string {
-	return s.firstFunction
+	if len(s.functions) > 0 {
+		return s.functions[0]
+	}
+	return ""
+}
+
+// AllFunctions returns the names of all functions on the stack.
+func (s Stack) AllFunctions() []string {
+	return s.functions
 }
 
 func (s Stack) String() string {
 	return fmt.Sprintf(
 		"Goroutine %v in state %v, with %v on top of the stack:\n%s",
-		s.id, s.state, s.firstFunction, s.Full())
+		s.id, s.state, s.FirstFunction(), s.Full())
 }
 
 func getStacks(all bool) []Stack {
@@ -82,7 +90,6 @@ func getStacks(all bool) []Stack {
 		}
 
 		// If we see the goroutine header, start a new stack.
-		isFirstLine := false
 		if strings.HasPrefix(line, "goroutine ") {
 			// flush any previous stack
 			if curStack != nil {
@@ -94,11 +101,10 @@ func getStacks(all bool) []Stack {
 				state:     goState,
 				fullStack: &bytes.Buffer{},
 			}
-			isFirstLine = true
 		}
 		curStack.fullStack.WriteString(line)
-		if !isFirstLine && curStack.firstFunction == "" {
-			curStack.firstFunction = parseFirstFunc(line)
+		if f := parseFunc(line); f != "" {
+			curStack.functions = append(curStack.functions, f)
 		}
 	}
 
@@ -127,12 +133,15 @@ func getStackBuffer(all bool) []byte {
 	}
 }
 
-func parseFirstFunc(line string) string {
+func parseFunc(line string) string {
 	line = strings.TrimSpace(line)
 	if idx := strings.LastIndex(line, "("); idx > 0 {
 		return line[:idx]
 	}
-	panic(fmt.Sprintf("function calls missing parents: %q", line))
+	if idx := strings.LastIndex(line, "created by"); idx >= 0 {
+		return strings.TrimPrefix(line, "created by ")
+	}
+	return ""
 }
 
 // parseGoStackHeader parses a stack header that looks like:

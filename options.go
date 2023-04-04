@@ -84,7 +84,12 @@ func Cleanup(cleanupFunc func(exitCode int)) Option {
 // e.g., go.uber.org/goleak.IgnoreTopFunction
 func IgnoreAnyFunction(f string) Option {
 	return addFilter(func(s stack.Stack) bool {
-		return strings.Contains(s.Full(), f)
+		for _, f2 := range s.AllFunctions() {
+			if f == f2 {
+				return true
+			}
+		}
+		return false
 	})
 }
 
