@@ -181,8 +181,12 @@ func isTestStack(s stack.Stack) bool {
 	// Since go1.7, a separate goroutine is started to wait for signals.
 	// T.Parallel is for parallel tests, which are blocked until all serial
 	// tests have run with T.Parallel at the top of the stack.
+	// testing.runFuzzTests is for fuzz testing, it's blocked until the test
+	// function with all seed corpus have run.
+	// testing.runFuzzing is for fuzz testing, it's blocked until a failing
+	// input is found.
 	switch s.FirstFunction() {
-	case "testing.RunTests", "testing.(*T).Run", "testing.(*T).Parallel":
+	case "testing.RunTests", "testing.(*T).Run", "testing.(*T).Parallel", "testing.runFuzzing", "testing.runFuzzTests":
 		// In pre1.7 and post-1.7, background goroutines started by the testing
 		// package are blocked waiting on a channel.
 		return strings.HasPrefix(s.State(), "chan receive")
