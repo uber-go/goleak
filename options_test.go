@@ -86,3 +86,10 @@ func TestOptionsRetry(t *testing.T) {
 	assert.False(t, opts.retry(51), "Attempt 51/51 should not allow retrying")
 	assert.False(t, opts.retry(52), "Attempt 52/51 should not allow retrying")
 }
+
+func TestOptionsTeardown(t *testing.T) {
+	ch := make(chan int, 1)
+	opts := buildOpts(Teardown(func() { ch <- 99; close(ch) }))
+	opts.teardown()
+	assert.Equal(t, 99, <-ch, "Teardown not writing to channel.")
+}

@@ -53,6 +53,12 @@ func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 	opts := buildOpts(options...)
 
+	var teardown func()
+	teardown, opts.teardown = opts.teardown, nil
+	if teardown != nil {
+		teardown()
+	}
+
 	var cleanup func(int)
 	cleanup, opts.cleanup = opts.cleanup, nil
 	if cleanup == nil {

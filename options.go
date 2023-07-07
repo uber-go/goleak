@@ -47,6 +47,7 @@ type opts struct {
 	maxRetries int
 	maxSleep   time.Duration
 	cleanup    func(int)
+	teardown   func()
 }
 
 // implement apply so that opts struct itself can be used as
@@ -56,6 +57,7 @@ func (o *opts) apply(opts *opts) {
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
 	opts.cleanup = o.cleanup
+	opts.teardown = o.teardown
 }
 
 // validate the options.
@@ -92,6 +94,18 @@ func IgnoreTopFunction(f string) Option {
 func Cleanup(cleanupFunc func(exitCode int)) Option {
 	return optionFunc(func(opts *opts) {
 		opts.cleanup = cleanupFunc
+	})
+}
+
+// Teardown sets up a teardown function that will be executed at the
+// end of the leak check.
+// When passed to [VerifyTestMain], the teardown function will be executed
+// before [Find].
+// The teardown function may be used to cancel goroutines after
+// all tests have completed.
+func Teardown(teardownFunc func()) Option {
+	return optionFunc(func(opts *opts) {
+		opts.teardown = teardownFunc
 	})
 }
 
