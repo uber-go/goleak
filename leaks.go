@@ -87,7 +87,7 @@ type testHelper interface {
 //	defer VerifyNone(t)
 //
 // VerifyNone is currently incompatible with t.Parallel because it cannot
-// associate specific goroutines with specific tests. Thus, non-leaking 
+// associate specific goroutines with specific tests. Thus, non-leaking
 // goroutines from other tests running in parallel could fail this check.
 // If you need to run tests in parallel, use [VerifyTestMain] instead,
 // which will verify that no leaking goroutines exist after ALL tests finish.
