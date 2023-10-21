@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Built-in ignores now match function names more accurately.
   They will no longer ignore stacks because of file names
   that look similar to function names.
+### Added
+- Add an `IgnoreAnyFunction` option to ignore stack traces
+  that have the provided function anywhere in the stack.
 
 ## [1.2.1]
 ### Changed

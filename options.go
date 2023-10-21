@@ -83,6 +83,22 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+// IgnoreAnyFunction ignores goroutines where the specified function
+// is present anywhere in the stack.
+//
+// The function name must be fully qualified, e.g.,
+//
+//	go.uber.org/goleak.IgnoreAnyFunction
+//
+// For methods, the fully qualified form looks like:
+//
+//	go.uber.org/goleak.(*MyType).MyMethod
+func IgnoreAnyFunction(f string) Option {
+	return addFilter(func(s stack.Stack) bool {
+		return s.HasFunction(f)
+	})
+}
+
 // Cleanup sets up a cleanup function that will be executed at the
 // end of the leak check.
 // When passed to [VerifyTestMain], the exit code passed to cleanupFunc
