@@ -177,7 +177,12 @@ func TestParseFuncName(t *testing.T) {
 			want: "example.com/foo/bar.(*baz).qux",
 		},
 		{
-			name: "created by",
+			name: "created by", // Go 1.20
+			give: "created by example.com/foo/bar.baz",
+			want: "example.com/foo/bar.baz",
+		},
+		{
+			name: "created by/in goroutine", // Go 1.21
 			give: "created by example.com/foo/bar.baz in goroutine 123",
 			want: "example.com/foo/bar.baz",
 		},

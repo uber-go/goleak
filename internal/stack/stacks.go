@@ -215,6 +215,7 @@ func getStackBuffer(all bool) []byte {
 //
 //	example.com/path/to/package.funcName(args...)
 //	example.com/path/to/package.(*typeName).funcName(args...)
+//	created by example.com/path/to/package.funcName
 //	created by example.com/path/to/package.funcName in goroutine [...]
 func parseFuncName(line string) (string, error) {
 	var name string
@@ -223,8 +224,9 @@ func parseFuncName(line string) (string, error) {
 		// and before " in goroutine [...]".
 		idx := strings.Index(after, " in goroutine")
 		if idx >= 0 {
-			name = after[:idx]
+			after = after[:idx]
 		}
+		name = after
 	} else if idx := strings.LastIndexByte(line, '('); idx >= 0 {
 		// The function name is the part before the last '('.
 		name = line[:idx]
