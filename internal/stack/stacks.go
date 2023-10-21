@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
 package stack
 
 import (
-	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -37,7 +37,9 @@ type Stack struct {
 	id            int
 	state         string
 	firstFunction string
-	fullStack     *bytes.Buffer
+
+	// Full, raw stack trace.
+	fullStack string
 }
 
 // ID returns the goroutine ID.
@@ -52,7 +54,7 @@ func (s Stack) State() string {
 
 // Full returns the full stack trace for this goroutine.
 func (s Stack) Full() string {
-	return s.fullStack.String()
+	return s.fullStack
 }
 
 // FirstFunction returns the name of the first function on the stack.
@@ -67,45 +69,88 @@ func (s Stack) String() string {
 }
 
 func getStacks(all bool) []Stack {
-	var stacks []Stack
-
-	var curStack *Stack
-	stackReader := bufio.NewReader(bytes.NewReader(getStackBuffer(all)))
-	for {
-		line, err := stackReader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			// We're reading using bytes.NewReader which should never fail.
-			panic("bufio.NewReader failed on a fixed string")
-		}
-
-		// If we see the goroutine header, start a new stack.
-		isFirstLine := false
-		if strings.HasPrefix(line, "goroutine ") {
-			// flush any previous stack
-			if curStack != nil {
-				stacks = append(stacks, *curStack)
-			}
-			id, goState := parseGoStackHeader(line)
-			curStack = &Stack{
-				id:        id,
-				state:     goState,
-				fullStack: &bytes.Buffer{},
-			}
-			isFirstLine = true
-		}
-		curStack.fullStack.WriteString(line)
-		if !isFirstLine && curStack.firstFunction == "" {
-			curStack.firstFunction = parseFirstFunc(line)
-		}
-	}
-
-	if curStack != nil {
-		stacks = append(stacks, *curStack)
+	stacks, err := newStackParser(bytes.NewReader(getStackBuffer(all))).Parse()
+	if err != nil {
+		panic(err)
 	}
 	return stacks
+}
+
+type stackParser struct {
+	scan   *scanner
+	stacks []Stack
+	errors []error
+}
+
+func newStackParser(r io.Reader) *stackParser {
+	return &stackParser{
+		scan: newScanner(r),
+	}
+}
+
+func (p *stackParser) Parse() ([]Stack, error) {
+	for p.scan.Scan() {
+		line := p.scan.Text()
+
+		// If we see the goroutine header, start a new stack.
+		if strings.HasPrefix(line, "goroutine ") {
+			stack, err := p.parseStack(line)
+			if err != nil {
+				p.errors = append(p.errors, err)
+			} else {
+				p.stacks = append(p.stacks, stack)
+			}
+		}
+	}
+
+	p.errors = append(p.errors, p.scan.Err())
+	return p.stacks, errors.Join(p.errors...)
+}
+
+// parseStack parses a single stack trace from the given scanner.
+// line is the first line of the stack trace, which should look like:
+//
+//	goroutine 123 [runnable]:
+func (p *stackParser) parseStack(line string) (Stack, error) {
+	id, state, err := parseGoStackHeader(line)
+	if err != nil {
+		return Stack{}, fmt.Errorf("parse header: %w", err)
+	}
+
+	// Read the rest of the stack trace.
+	var (
+		firstFunction string
+		fullStack     bytes.Buffer
+	)
+	for p.scan.Scan() {
+		line := p.scan.Text()
+
+		if strings.HasPrefix(line, "goroutine ") {
+			// If we see the goroutine header,
+			// it's the end of this stack.
+			// Unscan so the next Scan sees the same line.
+			p.scan.Unscan()
+			break
+		}
+
+		fullStack.WriteString(line)
+		fullStack.WriteByte('\n') // scanner trims the newline
+
+		// The first line after the header is the top of the stack.
+		if firstFunction == "" {
+			firstFunction, err = parseFirstFunc(line)
+			if err != nil {
+				return Stack{}, fmt.Errorf("extract function: %w", err)
+			}
+		}
+	}
+
+	return Stack{
+		id:            id,
+		state:         state,
+		firstFunction: firstFunction,
+		fullStack:     fullStack.String(),
+	}, nil
 }
 
 // All returns the stacks for all running goroutines.
@@ -127,29 +172,33 @@ func getStackBuffer(all bool) []byte {
 	}
 }
 
-func parseFirstFunc(line string) string {
+func parseFirstFunc(line string) (string, error) {
 	line = strings.TrimSpace(line)
 	if idx := strings.LastIndex(line, "("); idx > 0 {
-		return line[:idx]
+		return line[:idx], nil
 	}
-	panic(fmt.Sprintf("function calls missing parents: %q", line))
+	return "", fmt.Errorf("no function found: %q", line)
 }
 
 // parseGoStackHeader parses a stack header that looks like:
 // goroutine 643 [runnable]:\n
 // And returns the goroutine ID, and the state.
-func parseGoStackHeader(line string) (goroutineID int, state string) {
-	line = strings.TrimSuffix(line, ":\n")
+func parseGoStackHeader(line string) (goroutineID int, state string, err error) {
+	// The scanner will have already trimmed the "\n",
+	// but we'll guard against it just in case.
+	//
+	// Trimming them separately makes them both optional.
+	line = strings.TrimSuffix(strings.TrimSuffix(line, ":"), "\n")
 	parts := strings.SplitN(line, " ", 3)
 	if len(parts) != 3 {
-		panic(fmt.Sprintf("unexpected stack header format: %q", line))
+		return 0, "", fmt.Errorf("unexpected format: %q", line)
 	}
 
 	id, err := strconv.Atoi(parts[1])
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse goroutine ID: %v in line %q", parts[1], line))
+		return 0, "", fmt.Errorf("bad goroutine ID %q in line %q", parts[1], line)
 	}
 
 	state = strings.TrimSuffix(strings.TrimPrefix(parts[2], "["), "]")
-	return id, state
+	return id, state, nil
 }

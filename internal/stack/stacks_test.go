@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -132,6 +132,46 @@ func TestAllLargeStack(t *testing.T) {
 
 	// Start enough goroutines so we exceed the default buffer size.
 	close(done)
+}
+
+func TestParseStackErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		give    string
+		wantErr string
+	}{
+		{
+			name:    "bad goroutine ID",
+			give:    "goroutine no-number [running]:",
+			wantErr: `bad goroutine ID "no-number"`,
+		},
+		{
+			name:    "not enough parts",
+			give:    "goroutine [running]:",
+			wantErr: `unexpected format`,
+		},
+		{
+			name: "bad function name",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz", // no arguments
+				"	example.com/foo/bar.go:123",
+			),
+			wantErr: `no function found`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := newStackParser(strings.NewReader(tt.give)).Parse()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func joinLines(lines ...string) string {
+	return strings.Join(lines, "\n") + "\n"
 }
 
 type byGoroutineID []Stack
