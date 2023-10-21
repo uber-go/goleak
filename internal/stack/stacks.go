@@ -141,10 +141,6 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 	funcs := make(map[string]struct{})
 	for p.scan.Scan() {
 		line := p.scan.Text()
-		if len(line) == 0 {
-			continue
-		}
-
 		if strings.HasPrefix(line, "goroutine ") {
 			// If we see the goroutine header,
 			// it's the end of this stack.
@@ -155,6 +151,10 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 
 		fullStack.WriteString(line)
 		fullStack.WriteByte('\n') // scanner trims the newline
+
+		if len(line) == 0 {
+			continue
+		}
 
 		funcName, err := parseFuncName(line)
 		if err != nil {
@@ -174,6 +174,8 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		if p.scan.Scan() {
 			bs := p.scan.Bytes()
 			if len(bs) > 0 && bs[0] == '\t' {
+				fullStack.Write(bs)
+				fullStack.WriteByte('\n')
 				continue
 			}
 

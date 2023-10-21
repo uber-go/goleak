@@ -105,6 +105,9 @@ func TestCurrent(t *testing.T) {
 	assert.True(t, got.HasFunction("testing.(*T).Run"),
 		"missing in stack: %v\n%s", "testing.(*T).Run", all)
 
+	assert.Contains(t, all, "stack/stacks_test.go",
+		"file name missing in stack:\n%s", all)
+
 	// Ensure that we are not returning the buffer without slicing it
 	// from getStackBuffer.
 	if len(got.Full()) > 1024 {
