@@ -68,37 +68,63 @@ func TestAll(t *testing.T) {
 	sort.Sort(byGoroutineID(got))
 
 	assert.Contains(t, got[0].Full(), "testing.(*T).Run")
+	assert.Contains(t, got[0].allFunctions, "testing.(*T).Run")
+
 	assert.Contains(t, got[1].Full(), "TestAll")
+	assert.Contains(t, got[1].allFunctions, "go.uber.org/goleak/internal/stack.TestAll")
+
 	for i := 0; i < 5; i++ {
 		assert.Contains(t, got[2+i].Full(), "stack.waitForDone")
 	}
 }
 
 func TestCurrent(t *testing.T) {
+	const pkgPrefix = "go.uber.org/goleak/internal/stack"
+
 	got := Current()
 	assert.NotZero(t, got.ID(), "Should get non-zero goroutine id")
 	assert.Equal(t, "running", got.State())
 	assert.Equal(t, "go.uber.org/goleak/internal/stack.getStackBuffer", got.FirstFunction())
 
 	wantFrames := []string{
-		"stack.getStackBuffer",
-		"stack.getStacks",
-		"stack.Current",
-		"stack.Current",
-		"stack.TestCurrent",
+		"getStackBuffer",
+		"getStacks",
+		"Current",
+		"Current",
+		"TestCurrent",
 	}
 	all := got.Full()
 	for _, frame := range wantFrames {
-		assert.Contains(t, all, frame)
+		name := pkgPrefix + "." + frame
+		assert.Contains(t, all, name)
+		assert.True(t, got.HasFunction(name), "missing in stack: %v\n%s", name, all)
 	}
 	assert.Contains(t, got.String(), "in state")
 	assert.Contains(t, got.String(), "on top of the stack")
+
+	assert.True(t, got.HasFunction("testing.(*T).Run"),
+		"missing in stack: %v\n%s", "testing.(*T).Run", all)
 
 	// Ensure that we are not returning the buffer without slicing it
 	// from getStackBuffer.
 	if len(got.Full()) > 1024 {
 		t.Fatalf("Returned stack is too large")
 	}
+}
+
+func TestCurrentCreatedBy(t *testing.T) {
+	var stack Stack
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		stack = Current()
+	}()
+	<-done
+
+	// This test function will be at the bottom of the stack
+	// as the function that created the goroutine.
+	assert.True(t,
+		stack.HasFunction("go.uber.org/goleak/internal/stack.TestCurrentCreatedBy"))
 }
 
 func TestAllLargeStack(t *testing.T) {
@@ -132,6 +158,38 @@ func TestAllLargeStack(t *testing.T) {
 
 	// Start enough goroutines so we exceed the default buffer size.
 	close(done)
+}
+
+func TestParseFuncName(t *testing.T) {
+	tests := []struct {
+		name string
+		give string
+		want string
+	}{
+		{
+			name: "function",
+			give: "example.com/foo/bar.baz()",
+			want: "example.com/foo/bar.baz",
+		},
+		{
+			name: "method",
+			give: "example.com/foo/bar.(*baz).qux()",
+			want: "example.com/foo/bar.(*baz).qux",
+		},
+		{
+			name: "created by",
+			give: "created by example.com/foo/bar.baz in goroutine 123",
+			want: "example.com/foo/bar.baz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseFuncName(tt.give)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestParseStackErrors(t *testing.T) {

@@ -34,9 +34,14 @@ const _defaultBufferSize = 64 * 1024 // 64 KiB
 
 // Stack represents a single Goroutine's stack.
 type Stack struct {
-	id            int
-	state         string
+	id    int
+	state string // e.g. 'running', 'chan receive'
+
+	// The first function on the stack.
 	firstFunction string
+
+	// A set of all functions in the stack,
+	allFunctions map[string]struct{}
 
 	// Full, raw stack trace.
 	fullStack string
@@ -60,6 +65,13 @@ func (s Stack) Full() string {
 // FirstFunction returns the name of the first function on the stack.
 func (s Stack) FirstFunction() string {
 	return s.firstFunction
+}
+
+// HasFunction reports whether the stack has the given function
+// anywhere in it.
+func (s Stack) HasFunction(name string) bool {
+	_, ok := s.allFunctions[name]
+	return ok
 }
 
 func (s Stack) String() string {
@@ -126,8 +138,12 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		firstFunction string
 		fullStack     bytes.Buffer
 	)
+	funcs := make(map[string]struct{})
 	for p.scan.Scan() {
 		line := p.scan.Text()
+		if len(line) == 0 {
+			continue
+		}
 
 		if strings.HasPrefix(line, "goroutine ") {
 			// If we see the goroutine header,
@@ -140,12 +156,29 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		fullStack.WriteString(line)
 		fullStack.WriteByte('\n') // scanner trims the newline
 
-		// The first line after the header is the top of the stack.
+		funcName, err := parseFuncName(line)
+		if err != nil {
+			return Stack{}, fmt.Errorf("parse function: %w", err)
+		}
+		funcs[funcName] = struct{}{}
 		if firstFunction == "" {
-			firstFunction, err = parseFirstFunc(line)
-			if err != nil {
-				return Stack{}, fmt.Errorf("extract function: %w", err)
+			firstFunction = funcName
+		}
+
+		// The function name is usually followed by a line in the form:
+		//
+		//	<tab>example.com/path/to/package/file.go:123 +0x123
+		//
+		// We don't care about the position, so we'll skip it,
+		// but only if it matches the expected format.
+		if p.scan.Scan() {
+			bs := p.scan.Bytes()
+			if len(bs) > 0 && bs[0] == '\t' {
+				continue
 			}
+
+			// Put it back if it doesn't match.
+			p.scan.Unscan()
 		}
 	}
 
@@ -153,6 +186,7 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		id:            id,
 		state:         state,
 		firstFunction: firstFunction,
+		allFunctions:  funcs,
 		fullStack:     fullStack.String(),
 	}, nil
 }
@@ -176,12 +210,31 @@ func getStackBuffer(all bool) []byte {
 	}
 }
 
-func parseFirstFunc(line string) (string, error) {
-	line = strings.TrimSpace(line)
-	if idx := strings.LastIndex(line, "("); idx > 0 {
-		return line[:idx], nil
+// Parses a single function from the given line.
+// The line is in one of these formats:
+//
+//	example.com/path/to/package.funcName(args...)
+//	example.com/path/to/package.(*typeName).funcName(args...)
+//	created by example.com/path/to/package.funcName in goroutine [...]
+func parseFuncName(line string) (string, error) {
+	var name string
+	if after, ok := strings.CutPrefix(line, "created by "); ok {
+		// The function name is the part after "created by "
+		// and before " in goroutine [...]".
+		idx := strings.Index(after, " in goroutine")
+		if idx >= 0 {
+			name = after[:idx]
+		}
+	} else if idx := strings.LastIndexByte(line, '('); idx >= 0 {
+		// The function name is the part before the last '('.
+		name = line[:idx]
 	}
-	return "", fmt.Errorf("no function found: %q", line)
+
+	if name == "" {
+		return "", fmt.Errorf("no function found: %q", line)
+	}
+
+	return name, nil
 }
 
 // parseGoStackHeader parses a stack header that looks like:
