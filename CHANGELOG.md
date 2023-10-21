@@ -5,7 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- No changes yet.
+### Fixed
+- Built-in ignores now match function names more accurately.
+  They will no longer ignore stacks because of file names
+  that look similar to function names.
 
 ## [1.2.1]
 ### Changed
