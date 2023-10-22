@@ -165,13 +165,14 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			firstFunction = funcName
 		}
 
-		// The function name is usually followed by a line in the form:
+		// The function name followed by a line in the form:
 		//
 		//	<tab>example.com/path/to/package/file.go:123 +0x123
 		//
-		// We don't care about the position, so we'll skip it,
-		// but only if it matches the expected format.
+		// We don't care about the position so we can skip this line.
 		if p.scan.Scan() {
+			// Be defensive:
+			// Skip the line only if it starts with a tab.
 			bs := p.scan.Bytes()
 			if len(bs) > 0 && bs[0] == '\t' {
 				fullStack.Write(bs)
@@ -179,7 +180,8 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 				continue
 			}
 
-			// Put it back if it doesn't match.
+			// Put it back and let the next iteration handle it
+			// if it doesn't start with a tab.
 			p.scan.Unscan()
 		}
 	}
