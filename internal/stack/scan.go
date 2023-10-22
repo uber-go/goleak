@@ -46,7 +46,8 @@ func (s *scanner) Scan() bool {
 	return s.Scanner.Scan()
 }
 
-// Unscan moves the scanner back one token.
+// Unscan stops the scanner from advancing its position
+// for the next Scan.
 //
 // Bytes and Text will return the same token after next Scan
 // that they do right now.
