@@ -101,9 +101,9 @@ func (p *stackParser) Parse() ([]Stack, error) {
 			stack, err := p.parseStack(line)
 			if err != nil {
 				p.errors = append(p.errors, err)
-			} else {
-				p.stacks = append(p.stacks, stack)
+				continue
 			}
+			p.stacks = append(p.stacks, stack)
 		}
 	}
 
