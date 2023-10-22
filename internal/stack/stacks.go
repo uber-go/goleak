@@ -153,6 +153,9 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		fullStack.WriteByte('\n') // scanner trims the newline
 
 		if len(line) == 0 {
+			// Empty line usually marks the end of the stack
+			// but we don't want to have to rely on that.
+			// Just skip it.
 			continue
 		}
 
