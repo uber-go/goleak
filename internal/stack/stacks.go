@@ -69,9 +69,13 @@ func (s Stack) String() string {
 }
 
 func getStacks(all bool) []Stack {
-	stacks, err := newStackParser(bytes.NewReader(getStackBuffer(all))).Parse()
+	trace := getStackBuffer(all)
+	stacks, err := newStackParser(bytes.NewReader(trace)).Parse()
 	if err != nil {
-		panic(err)
+		// Well-formed stack traces should never fail to parse.
+		// If they do, it's a bug in this package.
+		// Panic so we can fix it.
+		panic(fmt.Sprintf("Failed to parse stack trace: %v\n%s", err, trace))
 	}
 	return stacks
 }
