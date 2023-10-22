@@ -159,13 +159,21 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			continue
 		}
 
-		funcName, err := parseFuncName(line)
+		funcName, creator, err := parseFuncName(line)
 		if err != nil {
 			return Stack{}, fmt.Errorf("parse function: %w", err)
 		}
-		funcs[funcName] = struct{}{}
-		if firstFunction == "" {
-			firstFunction = funcName
+		if !creator {
+			// A function is part of a goroutine's stack
+			// only if it's not a "created by" function.
+			//
+			// The creator function is part of a different stack.
+			// We don't care about it right now.
+			funcs[funcName] = struct{}{}
+			if firstFunction == "" {
+				firstFunction = funcName
+			}
+
 		}
 
 		// The function name followed by a line in the form:
@@ -180,12 +188,30 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			if len(bs) > 0 && bs[0] == '\t' {
 				fullStack.Write(bs)
 				fullStack.WriteByte('\n')
-				continue
+			} else {
+				// Put it back and let the next iteration handle it
+				// if it doesn't start with a tab.
+				p.scan.Unscan()
 			}
+		}
 
-			// Put it back and let the next iteration handle it
-			// if it doesn't start with a tab.
-			p.scan.Unscan()
+		if creator {
+			// The "created by" line is the last line of the stack.
+			// We can stop parsing now.
+			//
+			// Note that if tracebackancestors=N is set,
+			// there may be more a traceback of the creator function
+			// following the "created by" line,
+			// but it should not be considered part of this stack.
+			// e.g.,
+			//
+			// created by testing.(*T).Run in goroutine 1
+			//         /usr/lib/go/src/testing/testing.go:1648 +0x3ad
+			// [originating from goroutine 1]:
+			// testing.(*T).Run(...)
+			//         /usr/lib/go/src/testing/testing.go:1649 +0x3ad
+			//
+			break
 		}
 	}
 
@@ -224,8 +250,9 @@ func getStackBuffer(all bool) []byte {
 //	example.com/path/to/package.(*typeName).funcName(args...)
 //	created by example.com/path/to/package.funcName
 //	created by example.com/path/to/package.funcName in goroutine [...]
-func parseFuncName(line string) (string, error) {
-	var name string
+//
+// Also reports whether the line was a "created by" line.
+func parseFuncName(line string) (name string, creator bool, err error) {
 	if after, ok := strings.CutPrefix(line, "created by "); ok {
 		// The function name is the part after "created by "
 		// and before " in goroutine [...]".
@@ -234,16 +261,17 @@ func parseFuncName(line string) (string, error) {
 			after = after[:idx]
 		}
 		name = after
+		creator = true
 	} else if idx := strings.LastIndexByte(line, '('); idx >= 0 {
 		// The function name is the part before the last '('.
 		name = line[:idx]
 	}
 
 	if name == "" {
-		return "", fmt.Errorf("no function found: %q", line)
+		return "", false, fmt.Errorf("no function found: %q", line)
 	}
 
-	return name, nil
+	return name, creator, nil
 }
 
 // parseGoStackHeader parses a stack header that looks like:

@@ -102,9 +102,6 @@ func TestCurrent(t *testing.T) {
 	assert.Contains(t, got.String(), "in state")
 	assert.Contains(t, got.String(), "on top of the stack")
 
-	assert.True(t, got.HasFunction("testing.(*T).Run"),
-		"missing in stack: %v\n%s", "testing.(*T).Run", all)
-
 	assert.Contains(t, all, "stack/stacks_test.go",
 		"file name missing in stack:\n%s", all)
 
@@ -124,10 +121,15 @@ func TestCurrentCreatedBy(t *testing.T) {
 	}()
 	<-done
 
-	// This test function will be at the bottom of the stack
-	// as the function that created the goroutine.
+	// The test function created the goroutine
+	// so it won't be part of the stack.
+	assert.False(t, stack.HasFunction("go.uber.org/goleak/internal/stack.TestCurrentCreatedBy"),
+		"TestCurrentCreatedBy should not be in stack:\n%s", stack.Full())
+
+	// However, the nested function should be.
 	assert.True(t,
-		stack.HasFunction("go.uber.org/goleak/internal/stack.TestCurrentCreatedBy"))
+		stack.HasFunction("go.uber.org/goleak/internal/stack.TestCurrentCreatedBy.func1"),
+		"TestCurrentCreatedBy.func1 is not in stack:\n%s", stack.Full())
 }
 
 func TestAllLargeStack(t *testing.T) {
@@ -165,9 +167,10 @@ func TestAllLargeStack(t *testing.T) {
 
 func TestParseFuncName(t *testing.T) {
 	tests := []struct {
-		name string
-		give string
-		want string
+		name    string
+		give    string
+		want    string
+		creator bool
 	}{
 		{
 			name: "function",
@@ -180,22 +183,25 @@ func TestParseFuncName(t *testing.T) {
 			want: "example.com/foo/bar.(*baz).qux",
 		},
 		{
-			name: "created by", // Go 1.20
-			give: "created by example.com/foo/bar.baz",
-			want: "example.com/foo/bar.baz",
+			name:    "created by", // Go 1.20
+			give:    "created by example.com/foo/bar.baz",
+			want:    "example.com/foo/bar.baz",
+			creator: true,
 		},
 		{
-			name: "created by/in goroutine", // Go 1.21
-			give: "created by example.com/foo/bar.baz in goroutine 123",
-			want: "example.com/foo/bar.baz",
+			name:    "created by/in goroutine", // Go 1.21
+			give:    "created by example.com/foo/bar.baz in goroutine 123",
+			want:    "example.com/foo/bar.baz",
+			creator: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseFuncName(tt.give)
+			got, creator, err := parseFuncName(tt.give)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.creator, creator)
 		})
 	}
 }
