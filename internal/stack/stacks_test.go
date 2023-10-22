@@ -21,6 +21,8 @@
 package stack
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -238,6 +240,226 @@ func TestParseStackErrors(t *testing.T) {
 			_, err := newStackParser(strings.NewReader(tt.give)).Parse()
 			require.Error(t, err)
 			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestParseStackFixtures(t *testing.T) {
+	type goroutine struct {
+		// ID must match the goroutine ID in the fixture.
+		// We use this to ensure that we are matching the right goroutine.
+		ID int
+
+		State         string
+		FirstFunction string
+
+		HasFunctions    []string // non-exhaustive, in any order
+		NotHasFunctions []string
+	}
+
+	tests := []struct {
+		name   string      // file name inside testdata
+		stacks []goroutine // in any order
+	}{
+		{
+			name: "http.txt",
+			stacks: []goroutine{
+				{
+					ID:            1,
+					State:         "running",
+					FirstFunction: "main.getStackBuffer",
+					HasFunctions: []string{
+						"main.getStackBuffer",
+						"main.main",
+					},
+				},
+				{
+					ID:            4,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.Serve",
+					},
+					NotHasFunctions: []string{"main.start"},
+				},
+				{
+					ID:            20,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).readLoop",
+				},
+				{
+					ID:            21,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).writeLoop",
+				},
+				{
+					ID:            8,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.(*conn).serve",
+					},
+					NotHasFunctions: []string{"net/http.(*Server).Serve"},
+				},
+			},
+		},
+		{
+			name: "http.go1.20.txt",
+			stacks: []goroutine{
+				{
+					ID:            1,
+					State:         "running",
+					FirstFunction: "main.getStackBuffer",
+					HasFunctions: []string{
+						"main.getStackBuffer",
+						"main.main",
+					},
+				},
+				{
+					ID:            20,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.(*Server).Serve",
+					},
+					NotHasFunctions: []string{"main.start"},
+				},
+				{
+					ID:            24,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).readLoop",
+				},
+				{
+					ID:            25,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).writeLoop",
+				},
+				{
+					ID:            4,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.(*conn).serve",
+					},
+					NotHasFunctions: []string{"net/http.(*Server).Serve"},
+				},
+			},
+		},
+		{
+			name: "http.tracebackancestors.txt",
+			stacks: []goroutine{
+				{
+					ID:            1,
+					State:         "running",
+					FirstFunction: "main.getStackBuffer",
+					HasFunctions: []string{
+						"main.getStackBuffer",
+						"main.main",
+					},
+				},
+				{
+					ID:            20,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.Serve",
+					},
+					NotHasFunctions: []string{
+						"main.start", // created by
+						"main.main",  // tracebackancestors
+					},
+				},
+				{
+					ID:            24,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).readLoop",
+					NotHasFunctions: []string{
+						"net/http.(*Transport).dialConn", // created by
+						// tracebackancestors:
+						"net/http.(*Transport).dialConnFor",
+						"net/http.(*Transport).queueForDial",
+						"net/http.(*Client).Get",
+						"main.start",
+						"main.main",
+					},
+				},
+				{
+					ID:            4,
+					State:         "IO wait",
+					FirstFunction: "internal/poll.runtime_pollWait",
+					HasFunctions: []string{
+						"internal/poll.runtime_pollWait",
+						"net/http.(*conn).serve",
+					},
+					NotHasFunctions: []string{
+						"net/http.(*Server).Serve", // created by
+						// tracebackancestors:
+						"net/http.Serve",
+						"main.start",
+						"main.main",
+					},
+				},
+				{
+					ID:            25,
+					State:         "select",
+					FirstFunction: "net/http.(*persistConn).writeLoop",
+					NotHasFunctions: []string{
+						"net/http.(*Transport).dialConn", // created by
+						// tracebackancestors:
+						"net/http.(*Transport).dialConnFor",
+						"net/http.(*Transport).queueForDial",
+						"net/http.(*Client).Get",
+						"main.start",
+						"main.main",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture, err := os.Open(filepath.Join("testdata", tt.name))
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, fixture.Close())
+			}()
+
+			stacks, err := newStackParser(fixture).Parse()
+			require.NoError(t, err)
+
+			stacksByID := make(map[int]Stack, len(stacks))
+			for _, s := range stacks {
+				stacksByID[s.ID()] = s
+			}
+
+			for _, wantStack := range tt.stacks {
+				gotStack, ok := stacksByID[wantStack.ID]
+				if !assert.True(t, ok, "missing stack %v", wantStack.ID) {
+					continue
+				}
+				delete(stacksByID, wantStack.ID)
+
+				assert.Equal(t, wantStack.State, gotStack.State())
+				assert.Equal(t, wantStack.FirstFunction, gotStack.FirstFunction())
+
+				for _, fn := range wantStack.HasFunctions {
+					assert.True(t, gotStack.HasFunction(fn), "missing in stack: %v\n%s", fn, gotStack.Full())
+				}
+
+				for _, fn := range wantStack.NotHasFunctions {
+					assert.False(t, gotStack.HasFunction(fn), "unexpected in stack: %v\n%s", fn, gotStack.Full())
+				}
+			}
+
+			for _, s := range stacksByID {
+				t.Errorf("unexpected stack:\n%s", s.Full())
+			}
 		})
 	}
 }
