@@ -38,6 +38,8 @@ func TestScanner(t *testing.T) {
 	assert.Equal(t, "bar", scanner.Text())
 
 	scanner.Unscan()
+	assert.Equal(t, "bar", scanner.Text())
+
 	require.True(t, scanner.Scan())
 	assert.Equal(t, "bar", scanner.Text())
 
