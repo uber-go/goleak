@@ -61,8 +61,31 @@ func TestOptionsFilters(t *testing.T) {
 	require.Equal(t, 1, countUnfiltered(), "Expected blockedG goroutine to not match any filter")
 
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
-	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).run"))
+	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).block"))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
+
+	// If we ignore startBlockedG, that should not ignore the blockedG goroutine
+	// because startBlockedG should be the "created by" function in the stack.
+	opts = buildOpts(IgnoreAnyFunction("go.uber.org/goleak.startBlockedG"))
+	require.Equal(t, 1, countUnfiltered(),
+		"startBlockedG should not be filtered out. running: %v", stack.All())
+}
+
+func TestOptionsIgnoreAnyFunction(t *testing.T) {
+	cur := stack.Current()
+	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
+
+	for _, s := range stack.All() {
+		if s.ID() == cur.ID() {
+			continue
+		}
+
+		if opts.filter(s) {
+			continue
+		}
+
+		t.Errorf("Unexpected goroutine: %v", s)
+	}
 }
 
 func TestBuildOptions(t *testing.T) {

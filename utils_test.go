@@ -45,6 +45,10 @@ func startBlockedG() *blockedG {
 
 func (bg *blockedG) run() {
 	close(bg.started)
+	bg.block()
+}
+
+func (bg *blockedG) block() {
 	<-bg.wait
 }
 
