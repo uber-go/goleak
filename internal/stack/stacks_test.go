@@ -208,6 +208,81 @@ func TestParseFuncName(t *testing.T) {
 	}
 }
 
+func TestParseStack(t *testing.T) {
+	tests := []struct {
+		name string
+		give string
+
+		id        int
+		state     string
+		firstFunc string
+		funcs     []string
+	}{
+		{
+			name: "running",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+			),
+			id:        1,
+			state:     "running",
+			firstFunc: "example.com/foo/bar.baz",
+			funcs:     []string{"example.com/foo/bar.baz"},
+		},
+		{
+			name: "without position",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				// Oops, no "file:line" entry for this function.
+				"example.com/foo/bar.qux()",
+				"	example.com/foo/bar.go:456",
+			),
+			id:        1,
+			state:     "running",
+			firstFunc: "example.com/foo/bar.baz",
+			funcs: []string{
+				"example.com/foo/bar.baz",
+				"example.com/foo/bar.qux",
+			},
+		},
+		{
+			name: "created by",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"created by example.com/foo/bar.qux",
+				"	example.com/foo/bar.go:456",
+			),
+			id:        1,
+			state:     "running",
+			firstFunc: "example.com/foo/bar.baz",
+			funcs: []string{
+				"example.com/foo/bar.baz",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stacks, err := newStackParser(strings.NewReader(tt.give)).Parse()
+			require.NoError(t, err)
+			require.Len(t, stacks, 1)
+
+			stack := stacks[0]
+			assert.Equal(t, tt.id, stack.ID())
+			assert.Equal(t, tt.state, stack.State())
+			assert.Equal(t, tt.firstFunc, stack.FirstFunction())
+			for _, fn := range tt.funcs {
+				assert.True(t, stack.HasFunction(fn),
+					"missing in stack: %v\n%s", fn, stack.Full())
+			}
+		})
+	}
+}
+
 func TestParseStackErrors(t *testing.T) {
 	tests := []struct {
 		name    string
