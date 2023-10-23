@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -197,7 +197,7 @@ func isTestStack(s stack.Stack) bool {
 func isSyscallStack(s stack.Stack) bool {
 	// Typically runs in the background when code uses CGo:
 	// https://github.com/golang/go/issues/16714
-	return s.FirstFunction() == "runtime.goexit" && strings.HasPrefix(s.State(), "syscall")
+	return s.HasFunction("runtime.goexit") && strings.HasPrefix(s.State(), "syscall")
 }
 
 func isStdLibStack(s stack.Stack) bool {
@@ -208,5 +208,5 @@ func isStdLibStack(s stack.Stack) bool {
 	}
 
 	// Using signal.Notify will start a runtime goroutine.
-	return strings.Contains(s.Full(), "runtime.ensureSigM")
+	return s.HasFunction("runtime.ensureSigM")
 }
