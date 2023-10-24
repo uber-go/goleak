@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   that have the provided function anywhere in the stack. (#113)
 - Ignore `testing.runFuzzing` and `testing.runFuzzTests` alongside
   other already-ignored test functions (`testing.RunTests`, etc). (#105)
-- Support reading an unordered set of all functions from a stack trace. (#110, #111)
 ### Changed
 - Miscellaneous CI-related fixes. (#103, #108, #114)
 
