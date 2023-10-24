@@ -56,9 +56,6 @@ func Find(options ...Option) error {
 	cur := stack.Current().ID()
 
 	opts := buildOpts(options...)
-	if err := opts.validate(); err != nil {
-		return err
-	}
 	if opts.cleanup != nil {
 		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
 	}
