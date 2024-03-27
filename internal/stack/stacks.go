@@ -25,12 +25,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 )
 
 const _defaultBufferSize = 64 * 1024 // 64 KiB
+
+// elidedFramesMatcher matches lines that indicate frames were elided; these cannot be parsed as functions.
+var elidedFramesMatcher = regexp.MustCompile(`\.\.\.\s*\d+ frames elided\s*\.\.\.`)
 
 // Stack represents a single Goroutine's stack.
 type Stack struct {
@@ -156,6 +160,13 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			// Empty line usually marks the end of the stack
 			// but we don't want to have to rely on that.
 			// Just skip it.
+			continue
+		}
+		if elidedFramesMatcher.MatchString(line) {
+			// e.g. ...23 frames elided...
+			// This indicates frames were elided from the stack trace,
+			// attempting to parse them via parseFuncName will fail resulting in a panic
+			// and a relatively useless output. Gracefully handle this.
 			continue
 		}
 
