@@ -269,7 +269,7 @@ func TestParseStack(t *testing.T) {
 				"goroutine 1 [running]:",
 				"example.com/foo/bar.baz()",
 				"	example.com/foo/bar.go:123",
-				"... 3 frames elided ...",
+				"...3 frames elided...",
 				"created by example.com/foo/bar.qux",
 				"	example.com/foo/bar.go:456",
 			),

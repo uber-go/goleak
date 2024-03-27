@@ -34,7 +34,7 @@ import (
 const _defaultBufferSize = 64 * 1024 // 64 KiB
 
 // elidedFramesMatcher matches lines that indicate frames were elided; these cannot be parsed as functions.
-var elidedFramesMatcher = regexp.MustCompile(`\.\.\.\s*\d+ frames elided\s*\.\.\.`)
+var elidedFramesMatcher = regexp.MustCompile(`\.\.\.\d+ frames elided\.\.\.`)
 
 // Stack represents a single Goroutine's stack.
 type Stack struct {
