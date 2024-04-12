@@ -164,8 +164,8 @@ func TestAllLargeStack(t *testing.T) {
 		t.Fatalf("Expected larger stack buffer")
 	}
 
-	// Also test the stack parser here to ensure it handles elided frames,
-	// and that if the format elided frames changes at any time we catch it.
+	// Also test the stack parser here to ensure it handles elided frames gracefully.
+	// We want to check this here, so that if the format of the "elided frames" message changes, we catch it.
 	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames:
 	// "...2 frames elided...".
 	_, err := newStackParser(bytes.NewReader(buf)).Parse()
