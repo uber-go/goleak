@@ -21,6 +21,7 @@
 package stack
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -136,8 +137,8 @@ func TestCurrentCreatedBy(t *testing.T) {
 
 func TestAllLargeStack(t *testing.T) {
 	const (
-		stackDepth    = 100
-		numGoroutines = 100
+		stackDepth    = 101
+		numGoroutines = 101
 	)
 
 	var started sync.WaitGroup
@@ -162,6 +163,13 @@ func TestAllLargeStack(t *testing.T) {
 	if len(buf) <= _defaultBufferSize {
 		t.Fatalf("Expected larger stack buffer")
 	}
+
+	// Also test the stack parser here to ensure it handles elided frames,
+	// and that if the format elided frames take changes at any time we catch it.
+	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames.
+	// "...2 frames elided...".
+	_, err := newStackParser(bytes.NewReader(buf)).Parse()
+	require.NoError(t, err)
 
 	// Start enough goroutines so we exceed the default buffer size.
 	close(done)
