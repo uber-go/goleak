@@ -165,8 +165,8 @@ func TestAllLargeStack(t *testing.T) {
 	}
 
 	// Also test the stack parser here to ensure it handles elided frames,
-	// and that if the format elided frames take changes at any time we catch it.
-	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames.
+	// and that if the format elided frames changes at any time we catch it.
+	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames:
 	// "...2 frames elided...".
 	_, err := newStackParser(bytes.NewReader(buf)).Parse()
 	require.NoError(t, err)
