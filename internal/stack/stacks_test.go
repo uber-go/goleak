@@ -168,8 +168,10 @@ func TestAllLargeStack(t *testing.T) {
 	// We want to check this here, so that if the format of the "elided frames" message changes, we catch it.
 	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames:
 	// "...2 frames elided...".
-	_, err := newStackParser(bytes.NewReader(buf)).Parse()
+	assert.Contains(t, string(buf), "frames elided...")
+	stacks, err := newStackParser(bytes.NewReader(buf)).Parse()
 	require.NoError(t, err)
+	assert.Greater(t, len(stacks), numGoroutines, "expect more parsed stacks than goroutines")
 
 	// Start enough goroutines so we exceed the default buffer size.
 	close(done)
