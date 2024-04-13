@@ -21,6 +21,7 @@
 package stack
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -136,8 +137,8 @@ func TestCurrentCreatedBy(t *testing.T) {
 
 func TestAllLargeStack(t *testing.T) {
 	const (
-		stackDepth    = 100
-		numGoroutines = 100
+		stackDepth    = 101
+		numGoroutines = 101
 	)
 
 	var started sync.WaitGroup
@@ -162,6 +163,15 @@ func TestAllLargeStack(t *testing.T) {
 	if len(buf) <= _defaultBufferSize {
 		t.Fatalf("Expected larger stack buffer")
 	}
+
+	// Also test the stack parser here to ensure it handles elided frames gracefully.
+	// We want to check this here, so that if the format of the "elided frames" message changes, we catch it.
+	// At the time of writing this test, with a stack depth of 101, we get 2 elided frames:
+	// "...2 frames elided...".
+	assert.Contains(t, string(buf), "frames elided...")
+	stacks, err := newStackParser(bytes.NewReader(buf)).Parse()
+	require.NoError(t, err)
+	assert.Greater(t, len(stacks), numGoroutines, "expect more parsed stacks than goroutines")
 
 	// Start enough goroutines so we exceed the default buffer size.
 	close(done)
@@ -253,6 +263,23 @@ func TestParseStack(t *testing.T) {
 				"goroutine 1 [running]:",
 				"example.com/foo/bar.baz()",
 				"	example.com/foo/bar.go:123",
+				"created by example.com/foo/bar.qux",
+				"	example.com/foo/bar.go:456",
+			),
+			id:        1,
+			state:     "running",
+			firstFunc: "example.com/foo/bar.baz",
+			funcs: []string{
+				"example.com/foo/bar.baz",
+			},
+		},
+		{
+			name: "elided frames",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"...3 frames elided...",
 				"created by example.com/foo/bar.qux",
 				"	example.com/foo/bar.go:456",
 			),

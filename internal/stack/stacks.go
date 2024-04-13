@@ -158,6 +158,13 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			// Just skip it.
 			continue
 		}
+		if strings.HasPrefix(line, "...") && strings.HasSuffix(line, " frames elided...") {
+			// e.g. ...23 frames elided...
+			// This indicates frames were elided from the stack trace,
+			// attempting to parse them via parseFuncName will fail resulting in a panic
+			// and a relatively useless output. Gracefully handle this.
+			continue
+		}
 
 		funcName, creator, err := parseFuncName(line)
 		if err != nil {
