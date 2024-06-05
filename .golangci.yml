@@ -17,6 +17,9 @@ linters-settings:
       - reflectvaluecompare
       - sortslice
       - unusedwrite
+  errcheck:
+    exclude-functions:
+      - fmt.Fprintf
 
 issues:
   # Print all issues reported by all linters.
