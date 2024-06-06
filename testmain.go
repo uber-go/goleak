@@ -45,7 +45,7 @@ type TestingM interface {
 //	  goleak.VerifyTestMain(m)
 //	}
 //
-// See https://golang.org/pkg/testing/#hdr-Main for more details.
+// See https://pkg.go.dev/testing#hdr-Main for more details.
 //
 // This will run all tests as per normal, and if they were successful, look
 // for any goroutine leaks and fail the tests if any leaks were found.
