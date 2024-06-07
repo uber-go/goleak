@@ -63,7 +63,7 @@ func TestAll(t *testing.T) {
 		got = All()
 	}
 
-	// We have exactly 7 gorotuines:
+	// We have exactly 7 goroutines:
 	// "main" goroutine
 	// test goroutine
 	// 5 goroutines started above.
