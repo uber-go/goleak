@@ -23,9 +23,22 @@ package goleak
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"go.uber.org/goleak/internal/stack"
 )
+
+// DefaultIgnoreFunctionSet can be set to a comma-separated list
+// of functions that may leak and should be ignored by goleak.
+// The registered set of functions will be then used similar to parameters
+// passed to [IgnoreAnyFunction]: any goroutine leaks with the given function
+// name(s) will be ignored by goleak.
+// This is helpful for library or tool authors that "owns" the leaking
+// goroutine and do not have explicit control over how the tests are run
+// by their consumers.
+// Unless you are in such a situation, you should be using [IgnoreAnyFunction],
+// [IgnoreCurrent], or [IgnoreTopFunction] instead.
+var DefaultIgnoreFunctionSet string
 
 // TestingT is the minimal subset of testing.TB that we use.
 type TestingT interface {
@@ -50,15 +63,30 @@ func filterStacks(stacks []stack.Stack, skipID int, opts *opts) []stack.Stack {
 	return filtered
 }
 
+func parseDefaultIgnoreFunctions() []Option {
+	// parse DefaultIgnoreFunctionSet and add it to filters
+	funcs := strings.Split(DefaultIgnoreFunctionSet, ",")
+	opts := make([]Option, 0, len(funcs))
+	for _, f := range funcs {
+		if f != "" {
+			opts = append(opts, IgnoreAnyFunction(f))
+		}
+	}
+	return opts
+}
+
 // Find looks for extra goroutines, and returns a descriptive error if
 // any are found.
 func Find(options ...Option) error {
 	cur := stack.Current().ID()
 
+	options = append(options, parseDefaultIgnoreFunctions()...)
+
 	opts := buildOpts(options...)
 	if opts.cleanup != nil {
 		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
 	}
+
 	var stacks []stack.Stack
 	retry := true
 	for i := 0; retry; i++ {
