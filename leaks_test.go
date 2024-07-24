@@ -201,3 +201,50 @@ func TestVerifyParallel(t *testing.T) {
 		VerifyNone(t)
 	})
 }
+
+func TestDefaultIgnoreFunctionSet(t *testing.T) {
+	t.Run("single function", func(t *testing.T) {
+		done := make(chan struct{})
+		go func() {
+			<-done
+		}()
+		require.Error(t, Find(), "expected the leaking goroutine to get flagged")
+
+		DefaultIgnoreFunctionSet = "go.uber.org/goleak.TestDefaultIgnoreFunctionSet.func1.1"
+		assert.Equal(t, 1, len(parseDefaultIgnoreFunctions()))
+		assert.NoError(t, Find(), "expected the goroutine to get ignored after setting DefaultIgnoreFunctionSet")
+
+		DefaultIgnoreFunctionSet = ""
+		assert.Error(t, Find(), "expected the leaking goroutine to get flagged again after resetting DefaultIgnoreFunctionSet")
+
+		close(done)
+		assert.NoError(t, Find())
+	})
+
+	t.Run("many functions", func(t *testing.T) {
+		bg := startBlockedG()
+		bg2 := blockedG2()
+
+		require.Error(t, Find(), "expected the leaking goroutine to get flagged")
+
+		DefaultIgnoreFunctionSet = "go.uber.org/goleak.(*blockedG).block,go.uber.org/goleak.blockedG2.func1"
+
+		assert.Equal(t, 2, len(parseDefaultIgnoreFunctions()), "expected 2 filters to be added with DefaultIgnoreFunctionSet")
+		assert.NoError(t, Find(), "expected the goroutine to get ignored after setting DefaultIgnoreFunctionSet")
+
+		DefaultIgnoreFunctionSet = ""
+		assert.Error(t, Find(), "expected the leaking goroutine to get flagged again after resetting DefaultIgnoreFunctionSet")
+
+		bg.unblock()
+		close(bg2)
+		assert.NoError(t, Find())
+	})
+}
+
+func blockedG2() chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		<-ch
+	}()
+	return ch
+}
