@@ -38,10 +38,11 @@ type Option interface {
 const _defaultRetries = 20
 
 type opts struct {
-	filters    []func(stack.Stack) bool
-	maxRetries int
-	maxSleep   time.Duration
-	cleanup    func(int)
+	filters      []func(stack.Stack) bool
+	maxRetries   int
+	maxSleep     time.Duration
+	cleanup      func(int)
+	runOnFailure bool
 }
 
 // implement apply so that opts struct itself can be used as
@@ -51,6 +52,7 @@ func (o *opts) apply(opts *opts) {
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
 	opts.cleanup = o.cleanup
+	opts.runOnFailure = o.runOnFailure
 }
 
 // optionFunc lets us easily write options without a custom type.
@@ -104,6 +106,14 @@ func IgnoreCurrent() Option {
 	}
 	return addFilter(func(s stack.Stack) bool {
 		return excludeIDSet[s.ID()]
+	})
+}
+
+// RunOnFailure makes goleak look for leaking goroutines upon test failures.
+// By default goleak only looks for leaking goroutines when tests succeed.
+func RunOnFailure() Option {
+	return optionFunc(func(opts *opts) {
+		opts.runOnFailure = true
 	})
 }
 
