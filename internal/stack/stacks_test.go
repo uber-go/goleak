@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -108,9 +109,20 @@ func TestCurrent(t *testing.T) {
 	assert.Contains(t, all, "stack/stacks_test.go",
 		"file name missing in stack:\n%s", all)
 
+	stackDepthFactor := 1
+	for _, debugVar := range strings.Split(os.Getenv("GODEBUG"), ",") {
+		debugKeyVal := strings.Split(debugVar, "=")
+		if len(debugKeyVal) == 2 && debugKeyVal[0] == "tracebackancestors" {
+			depth, err := strconv.ParseInt(debugKeyVal[1], 10, 32)
+			if err == nil && depth > 0 {
+				stackDepthFactor = int(depth) + 1
+			}
+		}
+	}
+
 	// Ensure that we are not returning the buffer without slicing it
 	// from getStackBuffer.
-	if len(got.Full()) > 1024 {
+	if len(got.Full()) > 1024*stackDepthFactor {
 		t.Fatalf("Returned stack is too large")
 	}
 }
@@ -355,8 +367,9 @@ func TestParseStackFixtures(t *testing.T) {
 		State         string
 		FirstFunction string
 
-		HasFunctions    []string // non-exhaustive, in any order
-		NotHasFunctions []string
+		HasFunctions      []string // non-exhaustive, in any order
+		NotHasFunctions   []string
+		HasFullStackLines []string // non-exhaustive, in any order
 	}
 
 	tests := []struct {
@@ -489,6 +502,9 @@ func TestParseStackFixtures(t *testing.T) {
 						"main.start",
 						"main.main",
 					},
+					HasFullStackLines: []string{
+						"	/usr/lib/go/src/net/http/transport.go:1437 +0x3cb",
+					},
 				},
 				{
 					ID:            4,
@@ -556,6 +572,11 @@ func TestParseStackFixtures(t *testing.T) {
 
 				for _, fn := range wantStack.NotHasFunctions {
 					assert.False(t, gotStack.HasFunction(fn), "unexpected in stack: %v\n%s", fn, gotStack.Full())
+				}
+
+				fullStack := gotStack.Full()
+				for _, line := range wantStack.HasFullStackLines {
+					assert.Contains(t, fullStack, line, "missing in full stack: %v\n%s", line, fullStack)
 				}
 			}
 
