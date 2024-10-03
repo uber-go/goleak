@@ -135,8 +135,9 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 
 	// Read the rest of the stack trace.
 	var (
-		firstFunction string
-		fullStack     bytes.Buffer
+		firstFunction    string
+		fullStack        bytes.Buffer
+		parsingAncestors bool
 	)
 	funcs := make(map[string]struct{})
 	for p.scan.Scan() {
@@ -152,7 +153,11 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		fullStack.WriteString(line)
 		fullStack.WriteByte('\n') // scanner trims the newline
 
-		if len(line) == 0 {
+		if strings.HasPrefix(line, "[originating from goroutine ") {
+			parsingAncestors = true
+		}
+
+		if len(line) == 0 || parsingAncestors {
 			// Empty line usually marks the end of the stack
 			// but we don't want to have to rely on that.
 			// Just skip it.
@@ -200,25 +205,6 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 				// if it doesn't start with a tab.
 				p.scan.Unscan()
 			}
-		}
-
-		if creator {
-			// The "created by" line is the last line of the stack.
-			// We can stop parsing now.
-			//
-			// Note that if tracebackancestors=N is set,
-			// there may be more a traceback of the creator function
-			// following the "created by" line,
-			// but it should not be considered part of this stack.
-			// e.g.,
-			//
-			// created by testing.(*T).Run in goroutine 1
-			//         /usr/lib/go/src/testing/testing.go:1648 +0x3ad
-			// [originating from goroutine 1]:
-			// testing.(*T).Run(...)
-			//         /usr/lib/go/src/testing/testing.go:1649 +0x3ad
-			//
-			break
 		}
 	}
 
