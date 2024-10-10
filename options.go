@@ -109,8 +109,9 @@ func IgnoreCurrent() Option {
 	})
 }
 
-// RunOnFailure makes goleak look for leaking goroutines upon test failures.
-// By default goleak only looks for leaking goroutines when tests succeed.
+// RunOnFailure makes [VerifyTestMain] look for leaking goroutines upon test failures as well.
+// By default [VerifyTestMain] only looks for leaking goroutines when tests succeed.
+// This has no effect on [VerifyNone], which always checks for leaking goroutines.
 func RunOnFailure() Option {
 	return optionFunc(func(opts *opts) {
 		opts.runOnFailure = true
