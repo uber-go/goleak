@@ -71,6 +71,29 @@ func TestOptionsFilters(t *testing.T) {
 		"startBlockedG should not be filtered out. running: %v", stack.All())
 }
 
+func TestOptionsIgnoreCreatedBy(t *testing.T) {
+	stopCh := make(chan struct{})
+	go func() {
+		<-stopCh
+	}()
+	defer close(stopCh)
+
+	cur := stack.Current()
+	opts := buildOpts(IgnoreCreatedBy("go.uber.org/goleak.TestOptionsIgnoreCreatedBy"))
+
+	for _, s := range stack.All() {
+		if s.ID() == cur.ID() {
+			continue
+		}
+
+		if opts.filter(s) {
+			continue
+		}
+
+		t.Errorf("Unexpected goroutine: %v", s)
+	}
+}
+
 func TestOptionsIgnoreAnyFunction(t *testing.T) {
 	cur := stack.Current()
 	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
