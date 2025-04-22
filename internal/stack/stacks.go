@@ -37,6 +37,9 @@ type Stack struct {
 	id    int
 	state string // e.g. 'running', 'chan receive'
 
+	// The function that spawned the goroutine.
+	createdBy string
+
 	// The first function on the stack.
 	firstFunction string
 
@@ -60,6 +63,11 @@ func (s Stack) State() string {
 // Full returns the full stack trace for this goroutine.
 func (s Stack) Full() string {
 	return s.fullStack
+}
+
+// CreatedBy returns the name of the function that spawned the goroutine.
+func (s Stack) CreatedBy() string {
+	return s.createdBy
 }
 
 // FirstFunction returns the name of the first function on the stack.
@@ -135,6 +143,7 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 
 	// Read the rest of the stack trace.
 	var (
+		createdBy     string
 		firstFunction string
 		fullStack     bytes.Buffer
 	)
@@ -218,6 +227,7 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			// testing.(*T).Run(...)
 			//         /usr/lib/go/src/testing/testing.go:1649 +0x3ad
 			//
+			createdBy = funcName
 			break
 		}
 	}
@@ -225,6 +235,7 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 	return Stack{
 		id:            id,
 		state:         state,
+		createdBy:     createdBy,
 		firstFunction: firstFunction,
 		allFunctions:  funcs,
 		fullStack:     fullStack.String(),

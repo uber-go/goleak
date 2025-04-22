@@ -85,6 +85,15 @@ func IgnoreAnyFunction(f string) Option {
 	})
 }
 
+// IgnoreCreatedBy ignores any goroutines that where spawned from the
+// specified function. The function name should be fully qualified, e.g.
+// go.uber.org/goleak.IgnoreCreatedBy.
+func IgnoreCreatedBy(f string) Option {
+	return addFilter(func(s stack.Stack) bool {
+		return s.CreatedBy() == f
+	})
+}
+
 // Cleanup sets up a cleanup function that will be executed at the
 // end of the leak check.
 // When passed to [VerifyTestMain], the exit code passed to cleanupFunc

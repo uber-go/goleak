@@ -225,6 +225,7 @@ func TestParseStack(t *testing.T) {
 
 		id        int
 		state     string
+		createdBy string
 		firstFunc string
 		funcs     []string
 	}{
@@ -268,6 +269,7 @@ func TestParseStack(t *testing.T) {
 			),
 			id:        1,
 			state:     "running",
+			createdBy: "example.com/foo/bar.qux",
 			firstFunc: "example.com/foo/bar.baz",
 			funcs: []string{
 				"example.com/foo/bar.baz",
@@ -285,6 +287,7 @@ func TestParseStack(t *testing.T) {
 			),
 			id:        1,
 			state:     "running",
+			createdBy: "example.com/foo/bar.qux",
 			firstFunc: "example.com/foo/bar.baz",
 			funcs: []string{
 				"example.com/foo/bar.baz",
@@ -301,6 +304,7 @@ func TestParseStack(t *testing.T) {
 			stack := stacks[0]
 			assert.Equal(t, tt.id, stack.ID())
 			assert.Equal(t, tt.state, stack.State())
+			assert.Equal(t, tt.createdBy, stack.CreatedBy())
 			assert.Equal(t, tt.firstFunc, stack.FirstFunction())
 			for _, fn := range tt.funcs {
 				assert.True(t, stack.HasFunction(fn),
