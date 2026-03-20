@@ -47,10 +47,10 @@ jobs:
         go-version: 1.23.x
         cache: false  # managed by golangci-lint
 
-    - uses: golangci/golangci-lint-action@v6
+    - uses: golangci/golangci-lint-action@v9
       name: Install golangci-lint
       with:
-        version: v1.64.8
+        version: v2.11.3
         # Hack: Use the official action to download, but not run.
         # make lint below will handle actually running the linter.
         args: --help

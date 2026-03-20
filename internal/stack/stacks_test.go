@@ -55,10 +55,7 @@ func TestAll(t *testing.T) {
 	got := All()
 
 	// Retry until the background stacks are not runnable/running.
-	for {
-		if !isBackgroundRunning(cur, got) {
-			break
-		}
+	for isBackgroundRunning(cur, got) {
 		runtime.Gosched()
 		got = All()
 	}
