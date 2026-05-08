@@ -148,6 +148,7 @@ func buildOpts(options ...Option) *opts {
 		isSyscallStack,
 		isStdLibStack,
 		isTraceStack,
+		isDNSResolverStack,
 	)
 	for _, option := range options {
 		option.apply(opts)
@@ -218,4 +219,11 @@ func isStdLibStack(s stack.Stack) bool {
 
 func isTraceStack(s stack.Stack) bool {
 	return s.HasFunction("runtime.ReadTrace")
+}
+
+func isDNSResolverStack(s stack.Stack) bool {
+	// On Linux (and other Unix platforms where cgo is not used),
+	// Go's pure-Go DNS resolver spawns goroutines for parallel
+	// A/AAAA lookups that may briefly outlive the caller.
+	return s.HasFunction("net.(*Resolver).goLookupIPCNAMEOrder")
 }
