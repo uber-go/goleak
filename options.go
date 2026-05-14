@@ -222,8 +222,8 @@ func isTraceStack(s stack.Stack) bool {
 }
 
 func isDNSResolverStack(s stack.Stack) bool {
-	// On Linux (and other Unix platforms where cgo is not used),
-	// Go's pure-Go DNS resolver spawns goroutines for parallel
-	// A/AAAA lookups that may briefly outlive the caller.
-	return s.HasFunction("net.(*Resolver).goLookupIPCNAMEOrder")
+	// net.Resolver is a public type covered by the Go 1 compatibility
+	// guarantee; matching on the receiver keeps this filter stable even
+	// if internal method names are renamed or refactored.
+	return strings.HasPrefix(s.CreatedBy(), "net.(*Resolver).")
 }
