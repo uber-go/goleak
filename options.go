@@ -148,6 +148,7 @@ func buildOpts(options ...Option) *opts {
 		isSyscallStack,
 		isStdLibStack,
 		isTraceStack,
+		isDNSResolverStack,
 	)
 	for _, option := range options {
 		option.apply(opts)
@@ -218,4 +219,18 @@ func isStdLibStack(s stack.Stack) bool {
 
 func isTraceStack(s stack.Stack) bool {
 	return s.HasFunction("runtime.ReadTrace")
+}
+
+// isDNSResolverStack matches the transient goroutines that the pure-Go DNS
+// resolver spawns during parallel A/AAAA lookups. The resolver is the default
+// on Linux (and on macOS when CGO_ENABLED=0), and on slow machines those
+// lookups can outlive the test that triggered them, producing false-positive
+// leaks. See https://github.com/uber-go/goleak/issues/141.
+//
+// The closure goroutines are spawned inside goLookupIPCNAMEOrder, so their
+// "created by" line points there and the in-stack function is one of the
+// generated .funcN names. Match on the creator so we don't have to enumerate
+// every closure index (which can change between Go versions).
+func isDNSResolverStack(s stack.Stack) bool {
+	return s.CreatedBy() == "net.(*Resolver).goLookupIPCNAMEOrder"
 }
