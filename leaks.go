@@ -29,7 +29,7 @@ import (
 
 // TestingT is the minimal subset of testing.TB that we use.
 type TestingT interface {
-	Error(...interface{})
+	Error(...any)
 }
 
 // filterStacks will filter any stacks excluded by the given opts.

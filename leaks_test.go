@@ -78,7 +78,7 @@ type fakeT struct {
 	errors []string
 }
 
-func (ft *fakeT) Error(args ...interface{}) {
+func (ft *fakeT) Error(args ...any) {
 	ft.errors = append(ft.errors, fmt.Sprint(args...))
 }
 
