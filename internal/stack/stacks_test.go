@@ -108,10 +108,12 @@ func TestCurrent(t *testing.T) {
 	assert.Contains(t, all, "stack/stacks_test.go",
 		"file name missing in stack:\n%s", all)
 
-	// Ensure that we are not returning the buffer without slicing it
-	// from getStackBuffer.
-	if len(got.Full()) > 1024 {
-		t.Fatalf("Returned stack is too large")
+	// Ensure that we are not returning the full buffer from getStackBuffer.
+	// Traceback ancestors can legitimately make the current stack larger than
+	// the old small sanity limit, but an unsliced buffer would still be the
+	// default buffer size.
+	if len(got.Full()) >= _defaultBufferSize {
+		t.Fatalf("Returned stack is too large: %d", len(got.Full()))
 	}
 }
 
@@ -314,6 +316,162 @@ func TestParseStack(t *testing.T) {
 	}
 }
 
+func TestParseStackSkipsTracebackAncestorBlocks(t *testing.T) {
+	t.Run("without live created by", func(t *testing.T) {
+		give := joinLines(
+			"goroutine 1 [running]:",
+			"example.com/foo/bar.baz()",
+			"	example.com/foo/bar.go:123",
+			"[originating from goroutine 7]:",
+			"example.com/foo/bar.qux(...)",
+			"	example.com/foo/bar.go:456",
+			"created by example.com/foo/bar.parent in goroutine 1",
+			"	example.com/foo/parent.go:12",
+			"goroutine 2 [select]:",
+			"example.com/foo/bar.wait()",
+			"	example.com/foo/bar.go:789",
+		)
+
+		stacks, err := newStackParser(strings.NewReader(give)).Parse()
+		require.NoError(t, err)
+		require.Len(t, stacks, 2)
+
+		stack := stacks[0]
+		assert.Equal(t, 1, stack.ID())
+		assert.Equal(t, "running", stack.State())
+		assert.Equal(t, "example.com/foo/bar.baz", stack.FirstFunction())
+		assert.Empty(t, stack.CreatedBy())
+
+		assert.True(t, stack.HasFunction("example.com/foo/bar.baz"))
+		assert.False(t, stack.HasFunction("example.com/foo/bar.qux"))
+		assert.False(t, stack.HasFunction("example.com/foo/bar.parent"))
+
+		assert.Contains(t, stack.Full(), "[originating from goroutine 7]:")
+		assert.Contains(t, stack.Full(), "example.com/foo/bar.qux(...)")
+		assert.Contains(t, stack.Full(), "created by example.com/foo/bar.parent in goroutine 1")
+
+		assert.Equal(t, 2, stacks[1].ID())
+		assert.Equal(t, "example.com/foo/bar.wait", stacks[1].FirstFunction())
+	})
+
+	t.Run("after live created by", func(t *testing.T) {
+		give := joinLines(
+			"goroutine 1 [select]:",
+			"example.com/foo/bar.baz()",
+			"	example.com/foo/bar.go:123",
+			"created by example.com/foo/bar.creator in goroutine 5",
+			"	example.com/foo/creator.go:12",
+			"[originating from goroutine 5]:",
+			"example.com/foo/bar.creator(...)",
+			"	example.com/foo/creator.go:13",
+			"created by example.com/foo/bar.parent",
+			"	example.com/foo/parent.go:14",
+			"goroutine 2 [select]:",
+			"example.com/foo/bar.wait()",
+			"	example.com/foo/bar.go:789",
+		)
+
+		stacks, err := newStackParser(strings.NewReader(give)).Parse()
+		require.NoError(t, err)
+		require.Len(t, stacks, 2)
+
+		stack := stacks[0]
+		assert.Equal(t, 1, stack.ID())
+		assert.Equal(t, "select", stack.State())
+		assert.Equal(t, "example.com/foo/bar.baz", stack.FirstFunction())
+		assert.Equal(t, "example.com/foo/bar.creator", stack.CreatedBy())
+
+		assert.True(t, stack.HasFunction("example.com/foo/bar.baz"))
+		assert.False(t, stack.HasFunction("example.com/foo/bar.creator"))
+		assert.False(t, stack.HasFunction("example.com/foo/bar.parent"))
+
+		assert.Contains(t, stack.Full(), "created by example.com/foo/bar.creator in goroutine 5")
+		assert.Contains(t, stack.Full(), "[originating from goroutine 5]:")
+		assert.Contains(t, stack.Full(), "example.com/foo/bar.creator(...)")
+		assert.Contains(t, stack.Full(), "created by example.com/foo/bar.parent")
+
+		assert.Equal(t, 2, stacks[1].ID())
+		assert.Equal(t, "example.com/foo/bar.wait", stacks[1].FirstFunction())
+	})
+
+	t.Run("until EOF", func(t *testing.T) {
+		give := joinLines(
+			"goroutine 1 [running]:",
+			"example.com/foo/bar.baz()",
+			"	example.com/foo/bar.go:123",
+			"[originating from goroutine 7]:",
+			"example.com/foo/bar.qux(...)",
+			"	example.com/foo/bar.go:456",
+		)
+
+		stacks, err := newStackParser(strings.NewReader(give)).Parse()
+		require.NoError(t, err)
+		require.Len(t, stacks, 1)
+
+		stack := stacks[0]
+		assert.Equal(t, 1, stack.ID())
+		assert.Equal(t, "example.com/foo/bar.baz", stack.FirstFunction())
+		assert.True(t, stack.HasFunction("example.com/foo/bar.baz"))
+		assert.False(t, stack.HasFunction("example.com/foo/bar.qux"))
+		assert.Contains(t, stack.Full(), "[originating from goroutine 7]:")
+		assert.Contains(t, stack.Full(), "example.com/foo/bar.qux(...)")
+	})
+}
+
+func TestParseStackRejectsMalformedTracebackAncestorHeader(t *testing.T) {
+	tests := []struct {
+		name string
+		give string
+	}{
+		{
+			name: "before live created by",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"[originating from goroutine nope]:",
+				"example.com/foo/bar.qux(...)",
+				"	example.com/foo/bar.go:456",
+			),
+		},
+		{
+			name: "after live created by",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"created by example.com/foo/bar.creator",
+				"	example.com/foo/creator.go:12",
+				"[originating from goroutine nope]:",
+				"example.com/foo/bar.qux(...)",
+				"	example.com/foo/bar.go:456",
+			),
+		},
+		{
+			name: "nested inside valid ancestry block",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"[originating from goroutine 7]:",
+				"example.com/foo/bar.qux(...)",
+				"	example.com/foo/bar.go:456",
+				"[originating from goroutine nope]:",
+				"example.com/foo/bar.parent(...)",
+				"	example.com/foo/parent.go:12",
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := newStackParser(strings.NewReader(tt.give)).Parse()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, `bad traceback ancestor header`)
+		})
+	}
+}
+
 func TestParseStackErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -361,6 +519,7 @@ func TestParseStackFixtures(t *testing.T) {
 
 		HasFunctions    []string // non-exhaustive, in any order
 		NotHasFunctions []string
+		FullContains    []string
 	}
 
 	tests := []struct {
@@ -479,6 +638,10 @@ func TestParseStackFixtures(t *testing.T) {
 						"main.start", // created by
 						"main.main",  // tracebackancestors
 					},
+					FullContains: []string{
+						"[originating from goroutine 1]:",
+						"main.start(...)",
+					},
 				},
 				{
 					ID:            24,
@@ -560,6 +723,10 @@ func TestParseStackFixtures(t *testing.T) {
 
 				for _, fn := range wantStack.NotHasFunctions {
 					assert.False(t, gotStack.HasFunction(fn), "unexpected in stack: %v\n%s", fn, gotStack.Full())
+				}
+
+				for _, fragment := range wantStack.FullContains {
+					assert.Contains(t, gotStack.Full(), fragment)
 				}
 			}
 

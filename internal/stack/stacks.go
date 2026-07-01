@@ -174,6 +174,15 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 			// and a relatively useless output. Gracefully handle this.
 			continue
 		}
+		if isTracebackAncestorHeader(line) {
+			if err := p.appendUntilNextGoroutine(&fullStack); err != nil {
+				return Stack{}, fmt.Errorf("parse traceback ancestor: %w", err)
+			}
+			break
+		}
+		if err := checkTracebackAncestorHeader(line); err != nil {
+			return Stack{}, fmt.Errorf("parse traceback ancestor: %w", err)
+		}
 
 		funcName, creator, err := parseFuncName(line)
 		if err != nil {
@@ -212,22 +221,15 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		}
 
 		if creator {
-			// The "created by" line is the last line of the stack.
-			// We can stop parsing now.
-			//
-			// Note that if tracebackancestors=N is set,
-			// there may be more a traceback of the creator function
-			// following the "created by" line,
-			// but it should not be considered part of this stack.
-			// e.g.,
-			//
-			// created by testing.(*T).Run in goroutine 1
-			//         /usr/lib/go/src/testing/testing.go:1648 +0x3ad
-			// [originating from goroutine 1]:
-			// testing.(*T).Run(...)
-			//         /usr/lib/go/src/testing/testing.go:1649 +0x3ad
-			//
+			// The "created by" line ends the live stack frames.
+			// With GODEBUG=tracebackancestors=N, runtime.Stack may
+			// append creation ancestry after this line. Preserve that
+			// raw text in Full, but do not parse it as functions from
+			// the current live stack.
 			createdBy = funcName
+			if err := p.appendNextTracebackAncestorBlock(&fullStack); err != nil {
+				return Stack{}, fmt.Errorf("parse traceback ancestor: %w", err)
+			}
 			break
 		}
 	}
@@ -290,6 +292,67 @@ func parseFuncName(line string) (name string, creator bool, err error) {
 	}
 
 	return name, creator, nil
+}
+
+const tracebackAncestorPrefix = "[originating from goroutine "
+
+func isTracebackAncestorHeader(line string) bool {
+	id, ok := strings.CutPrefix(line, tracebackAncestorPrefix)
+	if !ok {
+		return false
+	}
+	id, ok = strings.CutSuffix(id, "]:")
+	if !ok || id == "" {
+		return false
+	}
+
+	_, err := strconv.ParseUint(id, 10, 64)
+	return err == nil
+}
+
+func (p *stackParser) appendUntilNextGoroutine(fullStack *bytes.Buffer) error {
+	for p.scan.Scan() {
+		line := p.scan.Text()
+		if strings.HasPrefix(line, "goroutine ") {
+			p.scan.Unscan()
+			return nil
+		}
+		if err := checkTracebackAncestorHeader(line); err != nil {
+			return err
+		}
+		fullStack.WriteString(line)
+		fullStack.WriteByte('\n')
+	}
+	return nil
+}
+
+func checkTracebackAncestorHeader(line string) error {
+	if !strings.HasPrefix(line, tracebackAncestorPrefix) {
+		return nil
+	}
+	if !isTracebackAncestorHeader(line) {
+		return fmt.Errorf("bad traceback ancestor header: %q", line)
+	}
+	return nil
+}
+
+func (p *stackParser) appendNextTracebackAncestorBlock(fullStack *bytes.Buffer) error {
+	if !p.scan.Scan() {
+		return nil
+	}
+
+	line := p.scan.Text()
+	if err := checkTracebackAncestorHeader(line); err != nil {
+		return err
+	}
+	if !strings.HasPrefix(line, tracebackAncestorPrefix) {
+		p.scan.Unscan()
+		return nil
+	}
+
+	fullStack.WriteString(line)
+	fullStack.WriteByte('\n')
+	return p.appendUntilNextGoroutine(fullStack)
 }
 
 // parseGoStackHeader parses a stack header that looks like:
