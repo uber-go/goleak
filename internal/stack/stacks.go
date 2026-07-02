@@ -221,11 +221,19 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 		}
 
 		if creator {
-			// The "created by" line ends the live stack frames.
+			// The "created by" line ends the live stack frames for
+			// this goroutine, so the creator function is the last
+			// function we should parse into Stack.funcs.
+			//
 			// With GODEBUG=tracebackancestors=N, runtime.Stack may
-			// append creation ancestry after this line. Preserve that
-			// raw text in Full, but do not parse it as functions from
-			// the current live stack.
+			// still append ancestry text after the "created by" line:
+			//
+			//   created by testing.(*T).Run in goroutine 1
+			//   [originating from goroutine 1]:
+			//   testing.(*T).Run(...)
+			//
+			// Keep that raw traceback ancestor text in Stack.Full(),
+			// but do not treat it as live frames for this goroutine.
 			createdBy = funcName
 			if err := p.appendNextTracebackAncestorBlock(&fullStack); err != nil {
 				return Stack{}, fmt.Errorf("parse traceback ancestor: %w", err)
