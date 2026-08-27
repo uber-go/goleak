@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -34,9 +33,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _allDone chan struct{}
+var (
+	_allDone     chan struct{}
+	_workersDone sync.WaitGroup
+)
 
 func waitForDone() {
+	defer _workersDone.Done()
 	<-_allDone
 }
 
@@ -45,11 +48,18 @@ func TestAll(t *testing.T) {
 	// receive any arguments, so we can test that parseFirstFunc works
 	// regardless of arguments on the stack.
 	_allDone = make(chan struct{})
-	defer close(_allDone)
 
+	_workersDone.Add(5)
 	for i := 0; i < 5; i++ {
 		go waitForDone()
 	}
+	// Unblock the workers and wait for them to exit before returning, so
+	// they don't leak into other tests or, under 'go test -count', race
+	// with the next iteration's reassignment of _allDone.
+	defer func() {
+		close(_allDone)
+		_workersDone.Wait()
+	}()
 
 	cur := Current()
 	got := All()
@@ -68,17 +78,33 @@ func TestAll(t *testing.T) {
 	// test goroutine
 	// 5 goroutines started above.
 	require.Len(t, got, 7)
-	sort.Sort(byGoroutineID(got))
-
-	assert.Contains(t, got[0].Full(), "testing.(*T).Run")
-	assert.Contains(t, got[0].allFunctions, "testing.(*T).Run")
-
-	assert.Contains(t, got[1].Full(), "TestAll")
-	assert.Contains(t, got[1].allFunctions, "go.uber.org/goleak/internal/stack.TestAll")
-
-	for i := 0; i < 5; i++ {
-		assert.Contains(t, got[2+i].Full(), "stack.waitForDone")
+	// Identify goroutines by their stack contents rather than by sorting on
+	// goroutine ID: goroutine IDs are not guaranteed to be assigned in
+	// creation order (as of Go 1.26 the runtime may give a worker goroutine
+	// an ID that sorts before the goroutine that started it), so a sorted
+	// position no longer maps to a known goroutine.
+	var main, testAll *Stack
+	var workers int
+	for i := range got {
+		s := &got[i]
+		switch {
+		case s.HasFunction("go.uber.org/goleak/internal/stack.waitForDone"):
+			workers++
+			assert.Contains(t, s.Full(), "stack.waitForDone")
+		case s.HasFunction("go.uber.org/goleak/internal/stack.TestAll"):
+			testAll = s
+		case s.HasFunction("testing.(*T).Run"):
+			main = s
+		}
 	}
+
+	require.NotNil(t, main, "missing main goroutine running testing.(*T).Run")
+	assert.Contains(t, main.Full(), "testing.(*T).Run")
+
+	require.NotNil(t, testAll, "missing TestAll goroutine")
+	assert.Contains(t, testAll.Full(), "TestAll")
+
+	assert.Equal(t, 5, workers, "expected 5 waitForDone goroutines")
 }
 
 func TestCurrent(t *testing.T) {
@@ -573,12 +599,6 @@ func TestParseStackFixtures(t *testing.T) {
 func joinLines(lines ...string) string {
 	return strings.Join(lines, "\n") + "\n"
 }
-
-type byGoroutineID []Stack
-
-func (ss byGoroutineID) Len() int           { return len(ss) }
-func (ss byGoroutineID) Less(i, j int) bool { return ss[i].ID() < ss[j].ID() }
-func (ss byGoroutineID) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
 
 // Note: This is the same logic as in ../../utils_test.go
 // Copy+pasted to avoid dependency loops and exporting this test-helper.
