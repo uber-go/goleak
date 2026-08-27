@@ -89,12 +89,17 @@ func (s Stack) String() string {
 }
 
 func getStacks(all bool) []Stack {
-	trace := getStackBuffer(all)
+	return parseStacks(getStackBuffer(all))
+}
+
+// parseStacks parses a stack trace produced by runtime.Stack.
+//
+// It panics if the trace is malformed, since well-formed stack traces
+// produced by the runtime should never fail to parse.
+// If they do, it's a bug in this package, and panicking lets us fix it.
+func parseStacks(trace []byte) []Stack {
 	stacks, err := newStackParser(bytes.NewReader(trace)).Parse()
 	if err != nil {
-		// Well-formed stack traces should never fail to parse.
-		// If they do, it's a bug in this package.
-		// Panic so we can fix it.
 		panic(fmt.Sprintf("Failed to parse stack trace: %v\n%s", err, trace))
 	}
 	return stacks

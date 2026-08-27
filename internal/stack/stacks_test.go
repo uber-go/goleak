@@ -177,6 +177,26 @@ func TestAllLargeStack(t *testing.T) {
 	close(done)
 }
 
+func TestParseStacksPanicsOnMalformedTrace(t *testing.T) {
+	// getStacks relies on runtime.Stack always producing well-formed
+	// traces, and panics if parsing ever fails. Exercise that path
+	// directly with a malformed trace since the runtime won't produce one.
+	malformed := []byte("goroutine no-number [running]:\n")
+
+	recovered := func() (recovered any) {
+		defer func() { recovered = recover() }()
+		parseStacks(malformed)
+		return
+	}()
+
+	msg, ok := recovered.(string)
+	require.True(t, ok, "panic value should be a string, got %T", recovered)
+	assert.Contains(t, msg, "Failed to parse stack trace")
+	assert.Contains(t, msg, "bad goroutine ID")
+	// The offending trace should be included to aid debugging.
+	assert.Contains(t, msg, string(malformed))
+}
+
 func TestParseFuncName(t *testing.T) {
 	tests := []struct {
 		name    string
