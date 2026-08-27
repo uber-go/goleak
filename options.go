@@ -85,7 +85,7 @@ func IgnoreAnyFunction(f string) Option {
 	})
 }
 
-// IgnoreCreatedBy ignores any goroutines that where spawned from the
+// IgnoreCreatedBy ignores any goroutines that were spawned from the
 // specified function. The function name should be fully qualified, e.g.
 // go.uber.org/goleak.IgnoreCreatedBy.
 func IgnoreCreatedBy(f string) Option {
