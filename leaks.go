@@ -50,10 +50,23 @@ func filterStacks(stacks []stack.Stack, skipID int, opts *opts) []stack.Stack {
 	return filtered
 }
 
+// Stubbed in tests.
+var (
+	_stackCurrent = stack.Current
+	_stackAll     = stack.All
+)
+
 // Find looks for extra goroutines, and returns a descriptive error if
 // any are found.
+//
+// If goleak is unable to parse goroutine stacks (for example under TinyGo),
+// Find returns an error and no leak check is performed.
 func Find(options ...Option) error {
-	cur := stack.Current().ID()
+	cur, err := _stackCurrent()
+	if err != nil {
+		return err
+	}
+	curID := cur.ID()
 
 	opts := buildOpts(options...)
 	if opts.cleanup != nil {
@@ -65,7 +78,11 @@ func Find(options ...Option) error {
 	var stacks []stack.Stack
 	retry := true
 	for i := 0; retry; i++ {
-		stacks = filterStacks(stack.All(), cur, opts)
+		all, err := _stackAll()
+		if err != nil {
+			return err
+		}
+		stacks = filterStacks(all, curID, opts)
 
 		if len(stacks) == 0 {
 			return nil
@@ -80,6 +97,18 @@ type testHelper interface {
 	Helper()
 }
 
+// testLogger is the optional subset of testing.TB used to report that leak
+// detection was skipped. If t doesn't implement it, the skip is silent.
+type testLogger interface {
+	Logf(string, ...any)
+}
+
+func logf(t TestingT, format string, args ...any) {
+	if l, ok := t.(testLogger); ok {
+		l.Logf(format, args...)
+	}
+}
+
 // VerifyNone marks the given TestingT as failed if any extra goroutines are
 // found by Find. This is a helper method to make it easier to integrate in
 // tests by doing:
@@ -91,6 +120,10 @@ type testHelper interface {
 // goroutines from other tests running in parallel could fail this check.
 // If you need to run tests in parallel, use [VerifyTestMain] instead,
 // which will verify that no leaking goroutines exist after ALL tests finish.
+//
+// If goleak is unable to parse goroutine stacks (for example under TinyGo),
+// the check is skipped rather than failed; when t provides a Logf method, a
+// message is logged noting that leak detection was skipped.
 func VerifyNone(t TestingT, options ...Option) {
 	opts := buildOpts(options...)
 	var cleanup func(int)
@@ -102,7 +135,12 @@ func VerifyNone(t TestingT, options ...Option) {
 	}
 
 	if err := Find(opts); err != nil {
-		t.Error(err)
+		if errors.Is(err, stack.ErrNoStacks) {
+			// goleak can't run here (e.g. TinyGo); skip rather than fail.
+			logf(t, "%v; skipping goroutine leak detection", err)
+		} else {
+			t.Error(err)
+		}
 	}
 
 	if cleanup != nil {

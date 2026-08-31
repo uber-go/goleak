@@ -31,7 +31,8 @@ import (
 
 func TestOptionsFilters(t *testing.T) {
 	opts := buildOpts()
-	cur := stack.Current()
+	cur, err := stack.Current()
+	require.NoError(t, err)
 	all := getStableAll(t, cur)
 
 	// At least one of these should be the same as current, the others should be filtered out.
@@ -48,7 +49,9 @@ func TestOptionsFilters(t *testing.T) {
 	// Now the filters should find something that doesn't match a filter.
 	countUnfiltered := func() int {
 		var unmatched int
-		for _, s := range stack.All() {
+		all, err := stack.All()
+		require.NoError(t, err)
+		for _, s := range all {
 			if s.ID() == cur.ID() {
 				continue
 			}
@@ -62,13 +65,17 @@ func TestOptionsFilters(t *testing.T) {
 
 	// If we add an extra filter to ignore blockTill, it shouldn't match.
 	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).block"))
-	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
+	all, err = stack.All()
+	require.NoError(t, err)
+	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", all)
 
 	// If we ignore startBlockedG, that should not ignore the blockedG goroutine
 	// because startBlockedG should be the "created by" function in the stack.
 	opts = buildOpts(IgnoreAnyFunction("go.uber.org/goleak.startBlockedG"))
+	all, err = stack.All()
+	require.NoError(t, err)
 	require.Equal(t, 1, countUnfiltered(),
-		"startBlockedG should not be filtered out. running: %v", stack.All())
+		"startBlockedG should not be filtered out. running: %v", all)
 }
 
 func TestOptionsIgnoreCreatedBy(t *testing.T) {
@@ -78,10 +85,13 @@ func TestOptionsIgnoreCreatedBy(t *testing.T) {
 	}()
 	defer close(stopCh)
 
-	cur := stack.Current()
+	cur, err := stack.Current()
+	require.NoError(t, err)
 	opts := buildOpts(IgnoreCreatedBy("go.uber.org/goleak.TestOptionsIgnoreCreatedBy"))
 
-	for _, s := range stack.All() {
+	all, err := stack.All()
+	require.NoError(t, err)
+	for _, s := range all {
 		if s.ID() == cur.ID() {
 			continue
 		}
@@ -95,10 +105,13 @@ func TestOptionsIgnoreCreatedBy(t *testing.T) {
 }
 
 func TestOptionsIgnoreAnyFunction(t *testing.T) {
-	cur := stack.Current()
+	cur, err := stack.Current()
+	require.NoError(t, err)
 	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
 
-	for _, s := range stack.All() {
+	all, err := stack.All()
+	require.NoError(t, err)
+	for _, s := range all {
 		if s.ID() == cur.ID() {
 			continue
 		}
@@ -121,4 +134,19 @@ func TestOptionsRetry(t *testing.T) {
 	}
 	assert.False(t, opts.retry(51), "Attempt 51/51 should not allow retrying")
 	assert.False(t, opts.retry(52), "Attempt 52/51 should not allow retrying")
+}
+
+func TestIgnoreCurrentNoStacks(t *testing.T) {
+	// If stacks can't be parsed, IgnoreCurrent records nothing and produces a
+	// filter that excludes no goroutines (rather than panicking).
+	origAll := _stackAll
+	t.Cleanup(func() { _stackAll = origAll })
+	_stackAll = func() ([]stack.Stack, error) { return nil, stack.ErrNoStacks }
+
+	opts := buildOpts(IgnoreCurrent())
+
+	cur, err := stack.Current()
+	require.NoError(t, err)
+	require.False(t, opts.filter(cur),
+		"with no recorded goroutines, IgnoreCurrent should not filter anything")
 }

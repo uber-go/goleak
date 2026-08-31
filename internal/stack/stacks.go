@@ -88,8 +88,21 @@ func (s Stack) String() string {
 		s.id, s.state, s.firstFunction, s.Full())
 }
 
-func getStacks(all bool) []Stack {
-	return parseStacks(getStackBuffer(all))
+// ErrNoStacks is returned by Current and All when goleak cannot obtain any
+// parseable goroutine stacks — e.g. under TinyGo, whose runtime.Stack output
+// goleak does not recognise. It means leak detection cannot run, as opposed
+// to there being no leaked goroutines.
+var ErrNoStacks = errors.New("goleak: no goroutine stacks were parsed")
+
+func getStacks(all bool) ([]Stack, error) {
+	stacks := parseStacks(getStackBuffer(all))
+	if len(stacks) == 0 {
+		// runtime.Stack always yields at least the current goroutine on
+		// standard Go; an empty result means a runtime whose format we can't
+		// parse (e.g. TinyGo). Report it instead of indexing an empty slice.
+		return nil, ErrNoStacks
+	}
+	return stacks, nil
 }
 
 // parseStacks parses a stack trace produced by runtime.Stack.
@@ -248,19 +261,27 @@ func (p *stackParser) parseStack(line string) (Stack, error) {
 }
 
 // All returns the stacks for all running goroutines.
-func All() []Stack {
+func All() ([]Stack, error) {
 	return getStacks(true)
 }
 
 // Current returns the stack for the current goroutine.
-func Current() Stack {
-	return getStacks(false)[0]
+func Current() (Stack, error) {
+	stacks, err := getStacks(false)
+	if err != nil {
+		return Stack{}, err
+	}
+	return stacks[0], nil
 }
+
+// _runtimeStack is runtime.Stack, stubbed in tests to exercise unusual
+// runtime output (e.g. TinyGo, which produces no parseable stacks).
+var _runtimeStack = runtime.Stack
 
 func getStackBuffer(all bool) []byte {
 	for i := _defaultBufferSize; ; i *= 2 {
 		buf := make([]byte, i)
-		if n := runtime.Stack(buf, all); n < i {
+		if n := _runtimeStack(buf, all); n < i {
 			return buf[:n]
 		}
 	}
