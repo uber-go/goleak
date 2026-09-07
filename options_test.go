@@ -122,3 +122,31 @@ func TestOptionsRetry(t *testing.T) {
 	assert.False(t, opts.retry(51), "Attempt 51/51 should not allow retrying")
 	assert.False(t, opts.retry(52), "Attempt 52/51 should not allow retrying")
 }
+
+func TestOptionsApply(t *testing.T) {
+	var cleaned bool
+	cleanupFn := func(int) { cleaned = true }
+
+	o := &opts{
+		maxRetries:   10,
+		maxSleep:     time.Second,
+		cleanup:      cleanupFn,
+		runOnFailure: true,
+	}
+
+	target := &opts{}
+	o.apply(target)
+
+	assert.Equal(t, 10, target.maxRetries)
+	assert.Equal(t, time.Second, target.maxSleep)
+	assert.True(t, target.runOnFailure)
+	assert.NotNil(t, target.cleanup)
+	target.cleanup(0)
+	assert.True(t, cleaned)
+}
+
+func TestRunOnFailure(t *testing.T) {
+	opts := buildOpts(RunOnFailure())
+	assert.True(t, opts.runOnFailure)
+}
+
