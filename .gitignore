@@ -3,3 +3,4 @@ vendor/
 /lint.log
 /cover.out
 /cover.html
+.idea/
