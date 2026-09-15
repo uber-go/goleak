@@ -336,6 +336,24 @@ func TestParseStack(t *testing.T) {
 				"example.com/foo/bar.baz",
 			},
 		},
+		{
+			name: "elided frames with leading whitespaces",
+			give: joinLines(
+				"goroutine 1 [running]:",
+				"example.com/foo/bar.baz()",
+				"	example.com/foo/bar.go:123",
+				"  ...23 frames elided...",
+				"created by example.com/foo/bar.qux",
+				" example.com/foo/bar.go:456",
+			),
+			id:        1,
+			state:     "running",
+			createdBy: "example.com/foo/bar.qux",
+			firstFunc: "example.com/foo/bar.baz",
+			funcs: []string{
+				"example.com/foo/bar.baz",
+			},
+		},
 	}
 
 	for _, tt := range tests {
