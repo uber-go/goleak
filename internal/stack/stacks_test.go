@@ -61,13 +61,16 @@ func TestAll(t *testing.T) {
 		_workersDone.Wait()
 	}()
 
-	cur := Current()
-	got := All()
+	cur, err := Current()
+	require.NoError(t, err)
+	got, err := All()
+	require.NoError(t, err)
 
 	// Retry until the background stacks are not runnable/running.
 	for isBackgroundRunning(cur, got) {
 		runtime.Gosched()
-		got = All()
+		got, err = All()
+		require.NoError(t, err)
 	}
 
 	// We have exactly 7 goroutines:
@@ -107,7 +110,8 @@ func TestAll(t *testing.T) {
 func TestCurrent(t *testing.T) {
 	const pkgPrefix = "go.uber.org/goleak/internal/stack"
 
-	got := Current()
+	got, err := Current()
+	require.NoError(t, err)
 	assert.NotZero(t, got.ID(), "Should get non-zero goroutine id")
 	assert.Equal(t, "running", got.State())
 	assert.Equal(t, "go.uber.org/goleak/internal/stack.getStackBuffer", got.FirstFunction())
@@ -143,7 +147,7 @@ func TestCurrentCreatedBy(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		stack = Current()
+		stack, _ = Current()
 	}()
 	<-done
 
@@ -156,6 +160,20 @@ func TestCurrentCreatedBy(t *testing.T) {
 	assert.True(t,
 		stack.HasFunction("go.uber.org/goleak/internal/stack.TestCurrentCreatedBy.func1"),
 		"TestCurrentCreatedBy.func1 is not in stack:\n%s", stack.Full())
+}
+
+func TestNoStacks(t *testing.T) {
+	// Simulate a runtime (e.g. TinyGo) whose runtime.Stack produces no
+	// parseable output: Current and All should report ErrNoStacks rather
+	// than panicking.
+	defer func(orig func([]byte, bool) int) { _runtimeStack = orig }(_runtimeStack)
+	_runtimeStack = func([]byte, bool) int { return 0 }
+
+	_, err := Current()
+	require.ErrorIs(t, err, ErrNoStacks)
+
+	_, err = All()
+	require.ErrorIs(t, err, ErrNoStacks)
 }
 
 func TestAllLargeStack(t *testing.T) {

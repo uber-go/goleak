@@ -34,6 +34,32 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  tinygo:
+    name: TinyGo
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Setup Go
+      # Pin a Go version supported by this TinyGo release; the main test
+      # matrix uses newer Go that TinyGo does not support yet.
+      uses: actions/setup-go@v4
+      with:
+        go-version: "1.25.x"
+
+    - name: Setup TinyGo
+      uses: acifani/setup-tinygo@v3
+      with:
+        tinygo-version: "0.40.1"
+
+    # Verify goleak builds and runs under TinyGo without panicking. TinyGo
+    # defines the "tinygo" build tag, so it picks up ./internal/tinygocheck,
+    # which standard Go tooling ignores. `run` (not `build`) is required: the
+    # original bug was a runtime panic, not a compile error.
+    - name: Smoke test
+      run: tinygo run ./internal/tinygocheck
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

@@ -28,6 +28,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go.uber.org/goleak/internal/stack"
 )
 
 // Ensure that testingT is a subset of testing.TB.
@@ -80,6 +82,65 @@ type fakeT struct {
 
 func (ft *fakeT) Error(args ...any) {
 	ft.errors = append(ft.errors, fmt.Sprint(args...))
+}
+
+// fakeTLogf extends fakeT with a Logf method, matching the optional
+// testLogger interface used to report skipped leak detection.
+type fakeTLogf struct {
+	fakeT
+	logs []string
+}
+
+func (ft *fakeTLogf) Logf(format string, args ...any) {
+	ft.logs = append(ft.logs, fmt.Sprintf(format, args...))
+}
+
+// stubStackFuncs replaces the stack.Current/stack.All seams so that goleak
+// behaves as if the runtime produced no parseable stacks (e.g. TinyGo).
+func stubStackFuncs(t *testing.T) {
+	origCurrent, origAll := _stackCurrent, _stackAll
+	t.Cleanup(func() {
+		_stackCurrent, _stackAll = origCurrent, origAll
+	})
+	_stackCurrent = func() (stack.Stack, error) { return stack.Stack{}, stack.ErrNoStacks }
+	_stackAll = func() ([]stack.Stack, error) { return nil, stack.ErrNoStacks }
+}
+
+func TestFindNoStacks(t *testing.T) {
+	t.Run("Current fails", func(t *testing.T) {
+		origCurrent := _stackCurrent
+		t.Cleanup(func() { _stackCurrent = origCurrent })
+		_stackCurrent = func() (stack.Stack, error) { return stack.Stack{}, stack.ErrNoStacks }
+
+		require.ErrorIs(t, Find(), stack.ErrNoStacks)
+	})
+
+	t.Run("All fails", func(t *testing.T) {
+		// Current succeeds, so the error must come from the All call.
+		origAll := _stackAll
+		t.Cleanup(func() { _stackAll = origAll })
+		_stackAll = func() ([]stack.Stack, error) { return nil, stack.ErrNoStacks }
+
+		require.ErrorIs(t, Find(), stack.ErrNoStacks)
+	})
+}
+
+func TestVerifyNoneNoStacks(t *testing.T) {
+	stubStackFuncs(t)
+
+	t.Run("logs and skips when logger available", func(t *testing.T) {
+		ft := &fakeTLogf{}
+		VerifyNone(ft)
+		require.Empty(t, ft.errors, "leak detection should be skipped, not failed")
+		require.Len(t, ft.logs, 1, "should log that leak detection was skipped")
+		assert.Contains(t, ft.logs[0], "skipping goroutine leak detection")
+	})
+
+	t.Run("skips silently without logger", func(t *testing.T) {
+		ft := &fakeT{}
+		VerifyNone(ft) // must neither panic nor fail
+		require.Empty(t, ft.errors, "leak detection should be skipped, not failed")
+	})
 }
 
 func TestVerifyNone(t *testing.T) {

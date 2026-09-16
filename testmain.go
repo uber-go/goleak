@@ -21,9 +21,12 @@
 package goleak
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+
+	"go.uber.org/goleak/internal/stack"
 )
 
 // Variables for stubbing in unit tests.
@@ -49,6 +52,10 @@ type TestingM interface {
 //
 // This will run all tests as per normal, and if they were successful, look
 // for any goroutine leaks and fail the tests if any leaks were found.
+//
+// If goleak is unable to parse goroutine stacks (for example under TinyGo),
+// the leak check is skipped: a message is written to stderr and the exit code
+// is left unchanged.
 func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 	opts := buildOpts(options...)
@@ -75,10 +82,15 @@ func VerifyTestMain(m TestingM, options ...Option) {
 
 	if run {
 		if err := Find(opts); err != nil {
-			fmt.Fprintf(_osStderr, errorMsg, err)
-			// rewrite exitCode if test passed and is set to 0.
-			if exitCode == 0 {
-				exitCode = 1
+			if errors.Is(err, stack.ErrNoStacks) {
+				// goleak can't run here (e.g. TinyGo); skip rather than fail.
+				fmt.Fprintf(_osStderr, "%v; skipping goroutine leak detection\n", err)
+			} else {
+				fmt.Fprintf(_osStderr, errorMsg, err)
+				// rewrite exitCode if test passed and is set to 0.
+				if exitCode == 0 {
+					exitCode = 1
+				}
 			}
 		}
 	}

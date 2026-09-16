@@ -110,8 +110,12 @@ func Cleanup(cleanupFunc func(exitCode int)) Option {
 // them in any future Find/Verify calls.
 func IgnoreCurrent() Option {
 	excludeIDSet := map[int]bool{}
-	for _, s := range stack.All() {
-		excludeIDSet[s.ID()] = true
+	// If stacks can't be parsed (e.g. under TinyGo), there's nothing to
+	// record; Find/VerifyNone will separately report ErrNoStacks.
+	if all, err := _stackAll(); err == nil {
+		for _, s := range all {
+			excludeIDSet[s.ID()] = true
+		}
 	}
 	return addFilter(func(s stack.Stack) bool {
 		return excludeIDSet[s.ID()]

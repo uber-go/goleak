@@ -25,6 +25,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"go.uber.org/goleak/internal/stack"
 )
 
 func init() {
@@ -88,4 +90,20 @@ func TestVerifyTestMain(t *testing.T) {
 	}))
 	assert.True(t, cleanupCalled)
 	assert.Equal(t, 3, cleanupExitcode)
+}
+
+func TestVerifyTestMainNoStacks(t *testing.T) {
+	defer clearOSStubs()
+	exitCode, stderr := osStubs()
+
+	// Simulate a runtime whose stacks can't be parsed (e.g. TinyGo).
+	origCurrent := _stackCurrent
+	defer func() { _stackCurrent = origCurrent }()
+	_stackCurrent = func() (stack.Stack, error) { return stack.Stack{}, stack.ErrNoStacks }
+
+	VerifyTestMain(dummyTestMain(0))
+	assert.Equal(t, 0, <-exitCode, "Exit code should stay 0 when stacks can't be parsed")
+	out := <-stderr
+	assert.Contains(t, out, "skipping goroutine leak detection")
+	assert.NotContains(t, out, "goleak: Errors")
 }
