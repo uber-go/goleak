@@ -69,11 +69,15 @@ func TestVerifyTestMain(t *testing.T) {
 
 	VerifyTestMain(dummyTestMain(7), RunOnFailure())
 	assert.Equal(t, 7, <-exitCode, "Exit code should not be modified")
-	assert.Contains(t, <-stderr, "goleak: Errors", "Find leaks on unsuccessful runs with RunOnFailure specified")
+	assert.Contains(t, <-stderr, "goleak: Errors on unsuccessful test run", "Find leaks on unsuccessful runs with RunOnFailure specified")
 
 	VerifyTestMain(dummyTestMain(0))
 	assert.Equal(t, 1, <-exitCode, "Expect error due to leaks on successful runs")
-	assert.Contains(t, <-stderr, "goleak: Errors", "Find leaks on successful runs")
+	assert.Contains(t, <-stderr, "goleak: Errors on successful test run", "Find leaks on successful runs")
+
+	VerifyTestMain(dummyTestMain(0), RunOnFailure())
+	assert.Equal(t, 1, <-exitCode, "Expect error due to leaks on successful runs")
+	assert.Contains(t, <-stderr, "goleak: Errors on successful test run", "Find leaks on successful runs")
 
 	blocked.unblock()
 	VerifyTestMain(dummyTestMain(0))

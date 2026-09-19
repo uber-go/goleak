@@ -65,7 +65,7 @@ func VerifyTestMain(m TestingM, options ...Option) {
 		errorMsg string
 	)
 
-	if !opts.runOnFailure && exitCode == 0 {
+	if exitCode == 0 {
 		errorMsg = "goleak: Errors on successful test run:%v\n"
 		run = true
 	} else if opts.runOnFailure {
