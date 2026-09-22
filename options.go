@@ -108,6 +108,21 @@ func Cleanup(cleanupFunc func(exitCode int)) Option {
 
 // IgnoreCurrent records all current goroutines when the option is created, and ignores
 // them in any future Find/Verify calls.
+//
+// The snapshot happens at the call to IgnoreCurrent, not at the later Verify call,
+// so it has to run before any goroutines you want VerifyNone to catch. Common patterns:
+//
+//	// Snapshot before starting any goroutines under test:
+//	opt := goleak.IgnoreCurrent()
+//	defer goleak.VerifyNone(t, opt)
+//
+//	// Or take the snapshot and verify in one line, still before starting:
+//	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+//
+// Building the option inside the deferred / t.Cleanup function body
+// (e.g. defer func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) }()) snapshots
+// goroutines as they exist at teardown, silently ignoring the very leaks the test
+// was meant to catch.
 func IgnoreCurrent() Option {
 	excludeIDSet := map[int]bool{}
 	for _, s := range stack.All() {
