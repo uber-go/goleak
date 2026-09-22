@@ -60,6 +60,12 @@ func TestFind(t *testing.T) {
 		err := Find(Cleanup(func(int) { assert.Fail(t, "this should not be called") }))
 		require.Error(t, err, "Should exit with invalid option")
 	})
+	t.Run("Find can't take in WithFinalizer option", func(t *testing.T) {
+		err := Find(WithFinalizer(func() {
+			assert.Fail(t, "this should not be called")
+		}))
+		require.Error(t, err, "Should exit with invalid option")
+	})
 }
 
 func TestFindRetry(t *testing.T) {

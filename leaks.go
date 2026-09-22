@@ -59,6 +59,9 @@ func Find(options ...Option) error {
 	if opts.cleanup != nil {
 		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
 	}
+	if opts.finalizer != nil {
+		return errors.New("WithFinalizer can only be passed to VerifyTestMain")
+	}
 	if opts.runOnFailure {
 		return errors.New("RunOnFailure can only be passed to VerifyTestMain")
 	}
