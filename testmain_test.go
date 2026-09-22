@@ -88,4 +88,14 @@ func TestVerifyTestMain(t *testing.T) {
 	}))
 	assert.True(t, cleanupCalled)
 	assert.Equal(t, 3, cleanupExitcode)
+
+	blocked = startBlockedG()
+	finalizerCalled := false
+	VerifyTestMain(dummyTestMain(0), WithFinalizer(func() {
+		finalizerCalled = true
+		blocked.unblock()
+	}))
+	assert.True(t, finalizerCalled)
+	assert.Equal(t, 0, <-exitCode, "Expect finalizer to prevent the leak")
+	assert.NotContains(t, <-stderr, "goleak: Errors", "Finalizer should run before leak detection")
 }

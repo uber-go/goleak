@@ -53,12 +53,19 @@ func VerifyTestMain(m TestingM, options ...Option) {
 	exitCode := m.Run()
 	opts := buildOpts(options...)
 
+	finalizer := opts.finalizer
+	opts.finalizer = nil
+
 	var cleanup func(int)
 	cleanup, opts.cleanup = opts.cleanup, nil
 	if cleanup == nil {
 		cleanup = _osExit
 	}
 	defer func() { cleanup(exitCode) }()
+
+	if finalizer != nil {
+		finalizer()
+	}
 
 	var (
 		run      bool

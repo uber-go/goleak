@@ -42,6 +42,7 @@ type opts struct {
 	maxRetries   int
 	maxSleep     time.Duration
 	cleanup      func(int)
+	finalizer    func()
 	runOnFailure bool
 }
 
@@ -52,6 +53,7 @@ func (o *opts) apply(opts *opts) {
 	opts.maxRetries = o.maxRetries
 	opts.maxSleep = o.maxSleep
 	opts.cleanup = o.cleanup
+	opts.finalizer = o.finalizer
 	opts.runOnFailure = o.runOnFailure
 }
 
@@ -103,6 +105,16 @@ func IgnoreCreatedBy(f string) Option {
 func Cleanup(cleanupFunc func(exitCode int)) Option {
 	return optionFunc(func(opts *opts) {
 		opts.cleanup = cleanupFunc
+	})
+}
+
+// WithFinalizer registers a function to run after the tests complete and before
+// VerifyTestMain checks for goroutine leaks.
+//
+// WithFinalizer can only be passed to VerifyTestMain.
+func WithFinalizer(finalizer func()) Option {
+	return optionFunc(func(opts *opts) {
+		opts.finalizer = finalizer
 	})
 }
 
