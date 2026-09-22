@@ -70,7 +70,7 @@ func IgnoreTopFunction(f string) Option {
 }
 
 // IgnoreAnyFunction ignores goroutines where the specified function
-// is present anywhere in the stack.
+// is present anywhere in the stack, including the "created by" frame.
 //
 // The function name must be fully qualified, e.g.,
 //
@@ -81,7 +81,7 @@ func IgnoreTopFunction(f string) Option {
 //	go.uber.org/goleak.(*MyType).MyMethod
 func IgnoreAnyFunction(f string) Option {
 	return addFilter(func(s stack.Stack) bool {
-		return s.HasFunction(f)
+		return s.HasFunction(f) || s.CreatedBy() == f
 	})
 }
 
