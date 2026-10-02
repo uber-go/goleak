@@ -32,6 +32,12 @@ type TestingT interface {
 	Error(...any)
 }
 
+// TestingTB is the minimal subset of testing.TB that we use for cleanup.
+type TestingTB interface {
+	TestingT
+	Cleanup(func())
+}
+
 // filterStacks will filter any stacks excluded by the given opts.
 // filterStacks modifies the passed in stacks slice.
 func filterStacks(stacks []stack.Stack, skipID int, opts *opts) []stack.Stack {
@@ -108,4 +114,31 @@ func VerifyNone(t TestingT, options ...Option) {
 	if cleanup != nil {
 		cleanup(0)
 	}
+}
+
+// VerifyCleanup registers a cleanup function on t using t.Cleanup to verify
+// that no goroutines have leaked after the test finishes.
+//
+// Unlike [VerifyNone], which is typically used with defer and runs when the
+// enclosing function returns, VerifyCleanup is designed to be called directly
+// from test helper functions:
+//
+//	func setup(t *testing.T) {
+//	    goleak.VerifyCleanup(t)
+//	}
+//
+// Any options passed to VerifyCleanup (such as [IgnoreCurrent]) are evaluated
+// immediately when VerifyCleanup is called, capturing state at setup time.
+func VerifyCleanup(t TestingTB, options ...Option) {
+	if h, ok := t.(testHelper); ok {
+		// Mark this function as a test helper, if available.
+		h.Helper()
+	}
+	opts := buildOpts(options...)
+	t.Cleanup(func() {
+		if h, ok := t.(testHelper); ok {
+			h.Helper()
+		}
+		VerifyNone(t, opts)
+	})
 }

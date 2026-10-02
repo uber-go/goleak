@@ -32,6 +32,7 @@ import (
 
 // Ensure that testingT is a subset of testing.TB.
 var _ = TestingT(testing.TB(nil))
+var _ = TestingTB(testing.TB(nil))
 
 // testOptions passes a shorter max sleep time, used so tests don't wait
 // ~1 second in cases where we expect Find to error out.
@@ -102,6 +103,92 @@ func TestVerifyNone(t *testing.T) {
 			cleanupCalled = true
 		}))
 		require.True(t, cleanupCalled, "expect cleanup registered callback to be called")
+	})
+}
+
+type fakeTB struct {
+	fakeT
+	cleanups []func()
+}
+
+func (ft *fakeTB) Cleanup(f func()) {
+	ft.cleanups = append(ft.cleanups, f)
+}
+
+func (ft *fakeTB) runCleanups() {
+	for i := len(ft.cleanups) - 1; i >= 0; i-- {
+		ft.cleanups[i]()
+	}
+}
+
+func TestVerifyCleanup(t *testing.T) {
+	t.Run("finds no leaks", func(t *testing.T) {
+		ft := &fakeTB{}
+		VerifyCleanup(ft)
+		require.Len(t, ft.cleanups, 1, "Expect cleanup to be registered")
+		ft.runCleanups()
+		require.Empty(t, ft.errors, "Expect no errors when no leaks exist")
+	})
+
+	t.Run("finds leaks", func(t *testing.T) {
+		ft := &fakeTB{}
+		VerifyCleanup(ft, testOptions())
+		require.Len(t, ft.cleanups, 1, "Expect cleanup to be registered")
+
+		bg := startBlockedG()
+		ft.runCleanups()
+		require.NotEmpty(t, ft.errors, "Expect error on leaked goroutine")
+		bg.unblock()
+	})
+
+	t.Run("test helper pattern with leak created in test", func(t *testing.T) {
+		ft := &fakeTB{}
+		// Simulate a helper function registering cleanup.
+		helper := func(tb TestingTB) {
+			VerifyCleanup(tb, testOptions())
+		}
+		helper(ft)
+
+		// After the helper returns, a leak occurs in the test body.
+		bg := startBlockedG()
+		ft.runCleanups()
+		require.NotEmpty(t, ft.errors, "Expect leak to be caught when cleanups run")
+		bg.unblock()
+	})
+
+	t.Run("with IgnoreCurrent option evaluated at setup time", func(t *testing.T) {
+		ft := &fakeTB{}
+		preExisting := startBlockedG()
+
+		// VerifyCleanup snapshots goroutines when called.
+		VerifyCleanup(ft, IgnoreCurrent(), testOptions())
+		ft.runCleanups()
+		require.Empty(t, ft.errors, "Pre-existing goroutine should be ignored")
+
+		// A new goroutine started after VerifyCleanup is detected.
+		ft.cleanups = nil
+		VerifyCleanup(ft, IgnoreCurrent(), testOptions())
+		newLeak := startBlockedG()
+		ft.runCleanups()
+		require.NotEmpty(t, ft.errors, "New goroutine should be detected as a leak")
+
+		newLeak.unblock()
+		preExisting.unblock()
+	})
+
+	t.Run("cleanup callback invoked", func(t *testing.T) {
+		ft := &fakeTB{}
+		cleanupCalled := false
+		VerifyCleanup(ft, Cleanup(func(c int) {
+			assert.Equal(t, 0, c)
+			cleanupCalled = true
+		}))
+		ft.runCleanups()
+		assert.True(t, cleanupCalled, "Expect Cleanup callback to be executed")
+	})
+
+	t.Run("integration with real testing.T", func(t *testing.T) {
+		VerifyCleanup(t)
 	})
 }
 

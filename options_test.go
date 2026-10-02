@@ -73,15 +73,20 @@ func TestOptionsFilters(t *testing.T) {
 
 func TestOptionsIgnoreCreatedBy(t *testing.T) {
 	stopCh := make(chan struct{})
+	doneCh := make(chan struct{})
 	go func() {
+		defer close(doneCh)
 		<-stopCh
 	}()
-	defer close(stopCh)
+	defer func() {
+		close(stopCh)
+		<-doneCh
+	}()
 
 	cur := stack.Current()
 	opts := buildOpts(IgnoreCreatedBy("go.uber.org/goleak.TestOptionsIgnoreCreatedBy"))
 
-	for _, s := range stack.All() {
+	for _, s := range getStableAll(t, cur) {
 		if s.ID() == cur.ID() {
 			continue
 		}
@@ -98,7 +103,7 @@ func TestOptionsIgnoreAnyFunction(t *testing.T) {
 	cur := stack.Current()
 	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
 
-	for _, s := range stack.All() {
+	for _, s := range getStableAll(t, cur) {
 		if s.ID() == cur.ID() {
 			continue
 		}
