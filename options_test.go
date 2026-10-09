@@ -64,24 +64,34 @@ func TestOptionsFilters(t *testing.T) {
 	opts = buildOpts(IgnoreTopFunction("go.uber.org/goleak.(*blockedG).block"))
 	require.Zero(t, countUnfiltered(), "blockedG should be filtered out. running: %v", stack.All())
 
-	// If we ignore startBlockedG, that should not ignore the blockedG goroutine
-	// because startBlockedG should be the "created by" function in the stack.
+	// If we ignore startBlockedG, that should ignore the blockedG goroutine
+	// because startBlockedG was the creator function in the stack.
 	opts = buildOpts(IgnoreAnyFunction("go.uber.org/goleak.startBlockedG"))
+	require.Zero(t, countUnfiltered(),
+		"startBlockedG should be filtered out. running: %v", stack.All())
+
+	// An unrelated function should not filter out the blockedG goroutine.
+	opts = buildOpts(IgnoreAnyFunction("go.uber.org/goleak.unrelatedFunc"))
 	require.Equal(t, 1, countUnfiltered(),
-		"startBlockedG should not be filtered out. running: %v", stack.All())
+		"unrelatedFunc should not be filtered out. running: %v", stack.All())
 }
 
 func TestOptionsIgnoreCreatedBy(t *testing.T) {
 	stopCh := make(chan struct{})
+	doneCh := make(chan struct{})
 	go func() {
+		defer close(doneCh)
 		<-stopCh
 	}()
-	defer close(stopCh)
+	defer func() {
+		close(stopCh)
+		<-doneCh
+	}()
 
 	cur := stack.Current()
 	opts := buildOpts(IgnoreCreatedBy("go.uber.org/goleak.TestOptionsIgnoreCreatedBy"))
 
-	for _, s := range stack.All() {
+	for _, s := range getStableAll(t, cur) {
 		if s.ID() == cur.ID() {
 			continue
 		}
@@ -95,10 +105,14 @@ func TestOptionsIgnoreCreatedBy(t *testing.T) {
 }
 
 func TestOptionsIgnoreAnyFunction(t *testing.T) {
-	cur := stack.Current()
-	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
+	bg := startBlockedG()
+	defer bg.unblock()
 
-	for _, s := range stack.All() {
+	cur := stack.Current()
+
+	// Matching active stack frame (not at top)
+	opts := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.(*blockedG).run"))
+	for _, s := range getStableAll(t, cur) {
 		if s.ID() == cur.ID() {
 			continue
 		}
@@ -108,6 +122,20 @@ func TestOptionsIgnoreAnyFunction(t *testing.T) {
 		}
 
 		t.Errorf("Unexpected goroutine: %v", s)
+	}
+
+	// Matching creator function
+	optsCreatedBy := buildOpts(IgnoreAnyFunction("go.uber.org/goleak.startBlockedG"))
+	for _, s := range getStableAll(t, cur) {
+		if s.ID() == cur.ID() {
+			continue
+		}
+
+		if optsCreatedBy.filter(s) {
+			continue
+		}
+
+		t.Errorf("Unexpected goroutine when filtering by creator: %v", s)
 	}
 }
 

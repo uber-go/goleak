@@ -31,12 +31,14 @@ import (
 type blockedG struct {
 	started chan struct{}
 	wait    chan struct{}
+	done    chan struct{}
 }
 
 func startBlockedG() *blockedG {
 	bg := &blockedG{
 		started: make(chan struct{}),
 		wait:    make(chan struct{}),
+		done:    make(chan struct{}),
 	}
 	go bg.run()
 	<-bg.started
@@ -45,6 +47,7 @@ func startBlockedG() *blockedG {
 
 func (bg *blockedG) run() {
 	close(bg.started)
+	defer close(bg.done)
 	bg.block()
 }
 
@@ -54,6 +57,8 @@ func (bg *blockedG) block() {
 
 func (bg *blockedG) unblock() {
 	close(bg.wait)
+	<-bg.done
+	runtime.Gosched()
 }
 
 func getStableAll(t *testing.T, cur stack.Stack) []stack.Stack {

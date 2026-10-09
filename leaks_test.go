@@ -103,6 +103,35 @@ func TestVerifyNone(t *testing.T) {
 		}))
 		require.True(t, cleanupCalled, "expect cleanup registered callback to be called")
 	})
+
+	t.Run("IgnoreAnyFunction excludes goroutines by creator function", func(t *testing.T) {
+		stop := make(chan struct{})
+		spawnIgnoredGoroutine(stop)
+
+		ft := &fakeT{}
+		VerifyNone(ft, testOptions())
+		require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine without ignore")
+
+		VerifyNone(t, IgnoreAnyFunction("go.uber.org/goleak.spawnIgnoredGoroutine"))
+
+		close(stop)
+		VerifyNone(t)
+	})
+
+	t.Run("IgnoreAnyFunction excludes goroutines by creator method", func(t *testing.T) {
+		stop := make(chan struct{})
+		target := &creatorMethodTarget{}
+		target.spawn(stop)
+
+		ft := &fakeT{}
+		VerifyNone(ft, testOptions())
+		require.NotEmpty(t, ft.errors, "Expect errors from VerifyNone on leaked goroutine without ignore")
+
+		VerifyNone(t, IgnoreAnyFunction("go.uber.org/goleak.(*creatorMethodTarget).spawn"))
+
+		close(stop)
+		VerifyNone(t)
+	})
 }
 
 func TestIgnoreCurrent(t *testing.T) {
@@ -201,3 +230,18 @@ func TestVerifyParallel(t *testing.T) {
 		VerifyNone(t)
 	})
 }
+
+func spawnIgnoredGoroutine(stop <-chan struct{}) {
+	go func() {
+		<-stop
+	}()
+}
+
+type creatorMethodTarget struct{}
+
+func (c *creatorMethodTarget) spawn(stop <-chan struct{}) {
+	go func() {
+		<-stop
+	}()
+}
+
